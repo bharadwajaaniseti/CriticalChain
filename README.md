@@ -432,7 +432,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Credits
 
-- **Original Concept**: Based on [Criticality](https://mechabit.itch.io/criticality) by mechabit
 - **Development**: Critical Chain Team
 - **Font**: [Poppins](https://fonts.google.com/specimen/Poppins) by Google Fonts
 - **Icons**: Emoji-based visual elements
