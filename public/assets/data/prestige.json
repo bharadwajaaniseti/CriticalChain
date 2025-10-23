@@ -1,0 +1,742 @@
+﻿{
+  "perma_root": {
+    "id": "perma_root",
+    "name": "Quantum Core",
+    "description": "The foundation of permanent power.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 0,
+    "costMultiplier": 1.0,
+    "unlocked": true,
+    "connectedNodes": ["perma_branch_foundation", "perma_branch_economy", "perma_branch_automation", "perma_branch_special"]
+  },
+  
+  "perma_branch_foundation": {
+    "id": "perma_branch_foundation",
+    "name": "Foundation",
+    "description": "Core starting improvements.",
+    "icon": "atom_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_clicks_1", "perma_start_time_1", "perma_start_coins_1"]
+  },
+  
+  "perma_branch_economy": {
+    "id": "perma_branch_economy",
+    "name": "Economy",
+    "description": "Boost earning and reduce costs.",
+    "icon": "prestige_coin_tag",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_quantum_gain_1", "perma_skill_cost_1", "perma_coin_mult_1"]
+  },
+  
+  "perma_branch_automation": {
+    "id": "perma_branch_automation",
+    "name": "Automation",
+    "description": "Unlock automation features.",
+    "icon": "gear",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_auto_prestige_unlock", "perma_offline_unlock", "perma_game_speed_unlock"]
+  },
+  
+  "perma_branch_special": {
+    "id": "perma_branch_special",
+    "name": "Advanced Physics",
+    "description": "Unlock special atom types.",
+    "icon": "network_branch_auto",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_time_atom_unlock", "perma_supernova_atom_unlock", "perma_blackhole_atom_unlock"]
+  },
+  
+  "perma_start_clicks_1": {
+    "id": "perma_start_clicks_1",
+    "name": "Extra Click I",
+    "description": "Start with +1 Click.",
+    "icon": "mouse_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_clicks_2"]
+  },
+  
+  "perma_start_clicks_2": {
+    "id": "perma_start_clicks_2",
+    "name": "Extra Click II",
+    "description": "Start with +2 Clicks.",
+    "icon": "mouse_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_clicks_3"]
+  },
+  
+  "perma_start_clicks_3": {
+    "id": "perma_start_clicks_3",
+    "name": "Extra Click III",
+    "description": "Start with +3 Clicks.",
+    "icon": "mouse_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_clicks_4"]
+  },
+  
+  "perma_start_clicks_4": {
+    "id": "perma_start_clicks_4",
+    "name": "Extra Click IV",
+    "description": "Start with +4 Clicks.",
+    "icon": "mouse_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_clicks_5"]
+  },
+  
+  "perma_start_clicks_5": {
+    "id": "perma_start_clicks_5",
+    "name": "Extra Click V",
+    "description": "Start with +5 Clicks.",
+    "icon": "mouse_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_start_time_1": {
+    "id": "perma_start_time_1",
+    "name": "Extra Time I",
+    "description": "+2s per level.",
+    "icon": "clock_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.5,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_time_2"]
+  },
+  
+  "perma_start_time_2": {
+    "id": "perma_start_time_2",
+    "name": "Extra Time II",
+    "description": "+2s per level.",
+    "icon": "clock_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_time_3"]
+  },
+  
+  "perma_start_time_3": {
+    "id": "perma_start_time_3",
+    "name": "Extra Time III",
+    "description": "+2s per level.",
+    "icon": "clock_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_start_coins_1": {
+    "id": "perma_start_coins_1",
+    "name": "Starting Capital I",
+    "description": "+100 coins per level.",
+    "icon": "coin_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.4,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_coins_2"]
+  },
+  
+  "perma_start_coins_2": {
+    "id": "perma_start_coins_2",
+    "name": "Starting Capital II",
+    "description": "+100 coins per level.",
+    "icon": "coin_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.5,
+    "unlocked": false,
+    "connectedNodes": ["perma_start_coins_3"]
+  },
+  
+  "perma_start_coins_3": {
+    "id": "perma_start_coins_3",
+    "name": "Starting Capital III",
+    "description": "+100 coins per level.",
+    "icon": "coin_plus_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.7,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_quantum_gain_1": {
+    "id": "perma_quantum_gain_1",
+    "name": "Quantum Efficiency I",
+    "description": "+5% quantum per level.",
+    "icon": "prestige_plus",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.3,
+    "unlocked": false,
+    "connectedNodes": ["perma_quantum_gain_2"]
+  },
+  
+  "perma_quantum_gain_2": {
+    "id": "perma_quantum_gain_2",
+    "name": "Quantum Efficiency II",
+    "description": "+5% quantum per level.",
+    "icon": "prestige_plus",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.4,
+    "unlocked": false,
+    "connectedNodes": ["perma_quantum_gain_3"]
+  },
+  
+  "perma_quantum_gain_3": {
+    "id": "perma_quantum_gain_3",
+    "name": "Quantum Efficiency III",
+    "description": "+5% quantum per level.",
+    "icon": "prestige_plus",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.5,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_skill_cost_1": {
+    "id": "perma_skill_cost_1",
+    "name": "Skill Optimization I",
+    "description": "-2% skill costs per level.",
+    "icon": "coin_down_star",
+    "currentLevel": 0,
+    "maxLevel": 25,
+    "baseCost": 1,
+    "costMultiplier": 1.4,
+    "unlocked": false,
+    "connectedNodes": ["perma_skill_cost_2"]
+  },
+  
+  "perma_skill_cost_2": {
+    "id": "perma_skill_cost_2",
+    "name": "Skill Optimization II",
+    "description": "-2% skill costs per level.",
+    "icon": "coin_down_star",
+    "currentLevel": 0,
+    "maxLevel": 25,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": ["perma_prestige_cost_1"]
+  },
+  
+  "perma_prestige_cost_1": {
+    "id": "perma_prestige_cost_1",
+    "name": "Quantum Mastery I",
+    "description": "-2% prestige costs per level.",
+    "icon": "prestige_down_star",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": ["perma_prestige_cost_2"]
+  },
+  
+  "perma_prestige_cost_2": {
+    "id": "perma_prestige_cost_2",
+    "name": "Quantum Mastery II",
+    "description": "-2% prestige costs per level.",
+    "icon": "prestige_down_star",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 2.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_coin_mult_1": {
+    "id": "perma_coin_mult_1",
+    "name": "Atom Value I",
+    "description": "+10% coin value per level.",
+    "icon": "atom_coin_x_star",
+    "currentLevel": 0,
+    "maxLevel": 30,
+    "baseCost": 1,
+    "costMultiplier": 1.5,
+    "unlocked": false,
+    "connectedNodes": ["perma_coin_mult_2"]
+  },
+  
+  "perma_coin_mult_2": {
+    "id": "perma_coin_mult_2",
+    "name": "Atom Value II",
+    "description": "+10% coin value per level.",
+    "icon": "atom_coin_x_star",
+    "currentLevel": 0,
+    "maxLevel": 30,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": ["perma_coin_mult_3"]
+  },
+  
+  "perma_coin_mult_3": {
+    "id": "perma_coin_mult_3",
+    "name": "Atom Value III",
+    "description": "+10% coin value per level.",
+    "icon": "atom_coin_x_star",
+    "currentLevel": 0,
+    "maxLevel": 30,
+    "baseCost": 1,
+    "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_auto_prestige_unlock": {
+    "id": "perma_auto_prestige_unlock",
+    "name": "Unlock: Auto-Prestige",
+    "description": "Auto-prestige feature.",
+    "icon": "prestige_recycle_auto",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["auto_prestige_rank_1", "auto_prestige_time_1"]
+  },
+  
+  "auto_prestige_rank_1": {
+    "id": "auto_prestige_rank_1",
+    "name": "Auto @ Rank 3",
+    "description": "Auto at rank 3.",
+    "icon": "prestige_recycle_auto_level",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["auto_prestige_rank_2"]
+  },
+  
+  "auto_prestige_rank_2": {
+    "id": "auto_prestige_rank_2",
+    "name": "Auto @ Rank 5",
+    "description": "Auto at rank 5.",
+    "icon": "prestige_recycle_auto_level",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["auto_prestige_rank_3"]
+  },
+  
+  "auto_prestige_rank_3": {
+    "id": "auto_prestige_rank_3",
+    "name": "Auto @ Rank 7",
+    "description": "Auto at rank 7.",
+    "icon": "prestige_recycle_auto_level",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["auto_prestige_rank_4"]
+  },
+  
+  "auto_prestige_rank_4": {
+    "id": "auto_prestige_rank_4",
+    "name": "Auto @ Rank 9",
+    "description": "Auto at rank 9.",
+    "icon": "prestige_recycle_auto_level",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "auto_prestige_time_1": {
+    "id": "auto_prestige_time_1",
+    "name": "Auto @ 2 Min",
+    "description": "Auto after 2 minutes.",
+    "icon": "prestige_recycle_auto_time",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["auto_prestige_time_2"]
+  },
+  
+  "auto_prestige_time_2": {
+    "id": "auto_prestige_time_2",
+    "name": "Auto @ 5 Min",
+    "description": "Auto after 5 minutes.",
+    "icon": "prestige_recycle_auto_time",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["auto_prestige_time_3"]
+  },
+  
+  "auto_prestige_time_3": {
+    "id": "auto_prestige_time_3",
+    "name": "Auto @ 10 Min",
+    "description": "Auto after 10 minutes.",
+    "icon": "prestige_recycle_auto_time",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_offline_unlock": {
+    "id": "perma_offline_unlock",
+    "name": "Unlock: Offline Progress",
+    "description": "Earn while away.",
+    "icon": "moon",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_offline_rate_1", "perma_offline_capacity_1"]
+  },
+  
+  "perma_offline_rate_1": {
+    "id": "perma_offline_rate_1",
+    "name": "Offline Efficiency I",
+    "description": "+10% offline rate per level.",
+    "icon": "moon_prestige",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.5,
+    "unlocked": false,
+    "connectedNodes": ["perma_offline_rate_2"]
+  },
+  
+  "perma_offline_rate_2": {
+    "id": "perma_offline_rate_2",
+    "name": "Offline Efficiency II",
+    "description": "+10% offline rate per level.",
+    "icon": "moon_prestige",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.7,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_offline_capacity_1": {
+    "id": "perma_offline_capacity_1",
+    "name": "Offline Duration I",
+    "description": "+2h per level.",
+    "icon": "moon_battery",
+    "currentLevel": 0,
+    "maxLevel": 12,
+    "baseCost": 1,
+    "costMultiplier": 1.4,
+    "unlocked": false,
+    "connectedNodes": ["perma_offline_capacity_2"]
+  },
+  
+  "perma_offline_capacity_2": {
+    "id": "perma_offline_capacity_2",
+    "name": "Offline Duration II",
+    "description": "+2h per level.",
+    "icon": "moon_battery",
+    "currentLevel": 0,
+    "maxLevel": 12,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_game_speed_unlock": {
+    "id": "perma_game_speed_unlock",
+    "name": "Unlock: 2x Speed",
+    "description": "2x game speed.",
+    "icon": "fast_forward_2x",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_game_speed_2"]
+  },
+  
+  "perma_game_speed_2": {
+    "id": "perma_game_speed_2",
+    "name": "Unlock: 3x Speed",
+    "description": "3x game speed.",
+    "icon": "fast_forward_3x",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_game_speed_3"]
+  },
+  
+  "perma_game_speed_3": {
+    "id": "perma_game_speed_3",
+    "name": "Unlock: 5x Speed",
+    "description": "5x game speed.",
+    "icon": "fast_forward_5x",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_time_atom_unlock": {
+    "id": "perma_time_atom_unlock",
+    "name": "Unlock: Time Atoms",
+    "description": "Blue atoms grant time.",
+    "icon": "atom_clock_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_time_atom_chance_1", "perma_time_atom_bonus_1"]
+  },
+  
+  "perma_time_atom_chance_1": {
+    "id": "perma_time_atom_chance_1",
+    "name": "Time Atom Spawn I",
+    "description": "+0.5% spawn chance per level.",
+    "icon": "atom_clock_star",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.5,
+    "unlocked": false,
+    "connectedNodes": ["perma_time_atom_chance_2"]
+  },
+  
+  "perma_time_atom_chance_2": {
+    "id": "perma_time_atom_chance_2",
+    "name": "Time Atom Spawn II",
+    "description": "+0.5% spawn chance per level.",
+    "icon": "atom_clock_star",
+    "currentLevel": 0,
+    "maxLevel": 20,
+    "baseCost": 1,
+    "costMultiplier": 1.7,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_time_atom_bonus_1": {
+    "id": "perma_time_atom_bonus_1",
+    "name": "Time Atom Power I",
+    "description": "+0.5s per level.",
+    "icon": "atom_clock_star",
+    "currentLevel": 0,
+    "maxLevel": 15,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": ["perma_time_atom_bonus_2"]
+  },
+  
+  "perma_time_atom_bonus_2": {
+    "id": "perma_time_atom_bonus_2",
+    "name": "Time Atom Power II",
+    "description": "+0.5s per level.",
+    "icon": "atom_clock_star",
+    "currentLevel": 0,
+    "maxLevel": 15,
+    "baseCost": 1,
+    "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_supernova_atom_unlock": {
+    "id": "perma_supernova_atom_unlock",
+    "name": "Unlock: Supernova Atoms",
+    "description": "Yellow atoms burst neutrons.",
+    "icon": "atom_starburst_star",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_supernova_chance_1", "perma_supernova_power_1"]
+  },
+  
+  "perma_supernova_chance_1": {
+    "id": "perma_supernova_chance_1",
+    "name": "Supernova Spawn I",
+    "description": "+0.3% spawn chance per level.",
+    "icon": "atom_starburst_star",
+    "currentLevel": 0,
+    "maxLevel": 15,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": ["perma_supernova_chance_2"]
+  },
+  
+  "perma_supernova_chance_2": {
+    "id": "perma_supernova_chance_2",
+    "name": "Supernova Spawn II",
+    "description": "+0.3% spawn chance per level.",
+    "icon": "atom_starburst_star",
+    "currentLevel": 0,
+    "maxLevel": 15,
+    "baseCost": 1,
+    "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_supernova_power_1": {
+    "id": "perma_supernova_power_1",
+    "name": "Supernova Power I",
+    "description": "+2 neutrons per level.",
+    "icon": "atom_starburst_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.7,
+    "unlocked": false,
+    "connectedNodes": ["perma_supernova_power_2"]
+  },
+  
+  "perma_supernova_power_2": {
+    "id": "perma_supernova_power_2",
+    "name": "Supernova Power II",
+    "description": "+2 neutrons per level.",
+    "icon": "atom_starburst_star",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 2.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_blackhole_atom_unlock": {
+    "id": "perma_blackhole_atom_unlock",
+    "name": "Unlock: Black Hole Atoms",
+    "description": "Purple atoms pull neutrons.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 1,
+    "costMultiplier": 1.0,
+    "unlocked": false,
+    "connectedNodes": ["perma_blackhole_chance_1", "perma_blackhole_power_1"]
+  },
+  
+  "perma_blackhole_chance_1": {
+    "id": "perma_blackhole_chance_1",
+    "name": "Black Hole Spawn I",
+    "description": "+0.2% spawn chance per level.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": ["perma_blackhole_chance_2"]
+  },
+  
+  "perma_blackhole_chance_2": {
+    "id": "perma_blackhole_chance_2",
+    "name": "Black Hole Spawn II",
+    "description": "+0.2% spawn chance per level.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 10,
+    "baseCost": 1,
+    "costMultiplier": 2.0,
+    "unlocked": false,
+    "connectedNodes": []
+  },
+  
+  "perma_blackhole_power_1": {
+    "id": "perma_blackhole_power_1",
+    "name": "Black Hole Pull I",
+    "description": "+20% pull strength per level.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 15,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
+    "unlocked": false,
+    "connectedNodes": ["perma_blackhole_power_2"]
+  },
+  
+  "perma_blackhole_power_2": {
+    "id": "perma_blackhole_power_2",
+    "name": "Black Hole Pull II",
+    "description": "+20% pull strength per level.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 15,
+    "baseCost": 1,
+    "costMultiplier": 1.9,
+    "unlocked": false,
+    "connectedNodes": []
+  }
+}

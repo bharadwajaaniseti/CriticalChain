@@ -22,13 +22,13 @@ const AUDIO_MAP: Record<AudioType, string> = {
   [AudioType.SFX_CLICK]: '/assets/audio/ui_click.mp3',
   [AudioType.SFX_REACTION]: '/assets/audio/reaction_trigger.mp3',
   [AudioType.SFX_UPGRADE]: '/assets/audio/upgrade_unlock.mp3',
-  [AudioType.SFX_ATOM_BREAK]: '/assets/audio/thud-impact-sound-sfx-379990.mp3',
+  [AudioType.SFX_ATOM_BREAK]: '/assets/audio/atom_break.mp3',
   [AudioType.MUSIC_IDLE]: '/assets/audio/ambient.mp3',
   [AudioType.MUSIC_REACTION]: '/assets/audio/reaction_build.mp3',
-  [AudioType.HOME_MUSIC_BG]: '/assets/audio/Home Background Music Backbeat.mp3',
-  [AudioType.HOME_UI_SELECT]: '/assets/audio/Home UI select-sound.mp3',
-  [AudioType.SKILLTREE_PURCHASE]: '/assets/audio/Skilltree purchase sound.mp3',
-  [AudioType.SKILLTREE_HOVER]: '/assets/audio/Skilltree hover soundeffect.mp3',
+  [AudioType.HOME_MUSIC_BG]: '/assets/audio/home_background_music.mp3',
+  [AudioType.HOME_UI_SELECT]: '/assets/audio/home_ui_select.mp3',
+  [AudioType.SKILLTREE_PURCHASE]: '/assets/audio/skilltree_purchase.mp3',
+  [AudioType.SKILLTREE_HOVER]: '/assets/audio/skilltree_hover.mp3',
 };
 
 class AudioManager {
@@ -123,23 +123,24 @@ class AudioManager {
       
       // Check if file exists
       if (!response.ok) {
-        // Silently skip placeholder files that don't exist
+        console.warn(`[AUDIO] File not found: ${path} (${response.status})`);
         return;
       }
       
       const arrayBuffer = await response.arrayBuffer();
 
       if (this.audioContext) {
-        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-        this.audioCache.set(type, audioBuffer);
-        console.log(`[AUDIO] Preloaded ${type}`);
+        try {
+          const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+          this.audioCache.set(type, audioBuffer);
+          console.log(`[AUDIO] ✓ Preloaded ${type}`);
+        } catch (decodeError) {
+          console.error(`[AUDIO] Failed to decode ${type}:`, decodeError);
+          console.warn(`[AUDIO] File may be corrupted or in unsupported format: ${path}`);
+        }
       }
     } catch (error) {
-      // Silently skip missing or invalid audio files (placeholders)
-      // Only log if it's the actual audio file we have
-      if (type === AudioType.SFX_ATOM_BREAK) {
-        console.warn(`[AUDIO] Failed to preload ${type}:`, error);
-      }
+      console.error(`[AUDIO] Failed to load ${type}:`, error);
     }
   }
 

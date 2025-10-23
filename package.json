@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "netlify:deploy": "netlify deploy --prod"
   },
   "dependencies": {
     "lucide-react": "^0.546.0",

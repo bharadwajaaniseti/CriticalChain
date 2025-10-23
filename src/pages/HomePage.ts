@@ -409,7 +409,7 @@ export class HomePage {
         
         <div class="credits-header">
           <div class="credits-icon-wrapper">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="credits-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="credits-icon">
               <path d="M12 12h.01"/>
               <path d="M7.5 4.2c-.3-.5-.9-.7-1.3-.4C3.9 5.5 2.3 8.1 2 11c-.1.5.4 1 1 1h5c0-1.5.8-2.8 2-3.4-1.1-1.9-2-3.5-2.5-4.4z"/>
               <path d="M21 12c.6 0 1-.4 1-1-.3-2.9-1.8-5.5-4.1-7.1-.4-.3-1.1-.2-1.3.3-.6.9-1.5 2.5-2.6 4.3 1.2.7 2 2 2 3.5h5z"/>
@@ -495,7 +495,18 @@ export class HomePage {
       }
     };
 
+    // Add escape key listener
+    document.addEventListener('keydown', handleEscape);
+
+    // Add close button click listener
     document.getElementById('close-credits')?.addEventListener('click', closeCredits);
+
+    // Close on overlay click (outside the panel)
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeCredits();
+      }
+    });
 
     // Add click handlers for sound preview buttons
     document.getElementById('play-impact')?.addEventListener('click', (e) => {
