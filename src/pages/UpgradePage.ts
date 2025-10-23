@@ -1,65 +1,228 @@
 /**
  * Upgrade Page
- * Skills and Prestige tabs
+ * Displays permanent upgrades using prestige.json data
  */
 
 import { NavigationManager } from '../systems/NavigationManager';
-import { skillTreeManager } from '../systems/SkillTreeManager';
 import { gameState } from '../systems/GameStateManager';
 import { audioManager, AudioType } from '../systems/AudioManager';
 
+interface UpgradeNode {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  currentLevel: number;
+  maxLevel: number;
+  baseCost: number;
+  costMultiplier: number;
+  unlocked: boolean;
+  connectedNodes: string[];
+}
+
 export class UpgradePage {
   private container: HTMLElement;
-  private activeTab: 'skills' | 'prestige' = 'skills';
+  private upgrades: Map<string, UpgradeNode> = new Map();
+  private quantumCores: number = 0;
 
   constructor(container: HTMLElement) {
     this.container = container;
-    this.render();
-    this.setupEventListeners();
+    this.loadUpgrades();
+  }
+
+  private async loadUpgrades(): Promise<void> {
+    try {
+      const response = await fetch('/assets/data/prestige.json');
+      const data = await response.json();
+      
+      // Get saved prestige upgrades from game state
+      const state = gameState.getState();
+      const savedUpgrades = state.prestigeUpgrades || {};
+      
+      // Convert JSON data to Map and apply saved progress
+      for (const [key, value] of Object.entries(data)) {
+        const upgradeNode = value as UpgradeNode;
+        
+        // Apply saved progress if it exists
+        if (savedUpgrades[key]) {
+          upgradeNode.currentLevel = savedUpgrades[key].currentLevel;
+          upgradeNode.unlocked = savedUpgrades[key].unlocked;
+        }
+        
+        this.upgrades.set(key, upgradeNode);
+      }
+      
+      this.render();
+    } catch (error) {
+      console.error('Failed to load upgrades:', error);
+      this.container.innerHTML = '<div class="error">Failed to load upgrades</div>';
+    }
+  }
+
+  private saveUpgradesToGameState(): void {
+    const state = gameState.getState();
+    
+    // Save all upgrade progress
+    this.upgrades.forEach((node) => {
+      state.prestigeUpgrades[node.id] = {
+        currentLevel: node.currentLevel,
+        unlocked: node.unlocked
+      };
+    });
+    
+    gameState.saveGame();
   }
 
   private render(): void {
+    const state = gameState.getState();
+    const unlockedCount = this.getUnlockedCount();
+    const totalNodes = this.upgrades.size;
+    this.quantumCores = state.quantumCores || 0;
+    
     this.container.innerHTML = `
       <div class="upgrade-page">
         <div class="upgrade-header">
           <button class="header-btn" id="back-to-home">
             ← Back
           </button>
-          <h1 class="upgrade-title">Skill Tree</h1>
-          <div class="coins-info">
-            <span class="coins-icon">💰</span>
-            <span class="coins-value" id="header-coins">0</span>
+          <h1 class="upgrade-title">Upgrades</h1>
+          <button class="reset-prestige-btn" id="reset-prestige-btn">
+            ♻️ Reset Prestige
+          </button>
+          <div class="quantum-cores-display">
+            <div class="coins-info">
+              <span class="coins-icon">⚛️</span>
+              <span class="coins-value" id="header-quantum-cores">${this.quantumCores}</span>
+              <span class="coins-label">Available</span>
+            </div>
+            <div class="total-cores-info">
+              <span class="total-label">Prestige unlocked:</span>
+              <span class="total-value" id="prestige-unlocked">${unlockedCount}/${totalNodes}</span>
+            </div>
           </div>
-        </div>
-
-        <div class="upgrade-tabs">
-          <button class="tab-button active" data-tab="skills">
-            Skills
-          </button>
-          <button class="tab-button locked" data-tab="prestige" title="Unlock at Rank 10">
-            Prestige 🔒
-          </button>
         </div>
 
         <div class="upgrade-content-wrapper">
-          <div class="tab-content active" id="skills-tab">
-            <div id="skill-tree" class="skill-tree-wrapper">
-              <!-- Skill tree rendered here -->
-            </div>
-          </div>
-
-          <div class="tab-content" id="prestige-tab">
-            <div class="prestige-locked-message">
-              <h2>🔒 Prestige System Locked</h2>
-              <p>Reach <span class="prestige-requirement">Rank 10</span> to unlock Prestige</p>
-              <p>Prestige allows you to restart with powerful permanent bonuses!</p>
-            </div>
+          <div id="upgrade-tree" class="upgrade-tree-wrapper">
+            <!-- Upgrade tree rendered here -->
           </div>
         </div>
       </div>
     `;
 
-    this.renderSkillTree();
+    this.renderUpgradeTree();
+    this.setupEventListeners();
+  }
+
+  private renderUpgradeTree(): void {
+    const container = document.getElementById('upgrade-tree');
+    if (!container) return;
+
+    const rootNode = this.upgrades.get('perma_root');
+    if (!rootNode) {
+      container.innerHTML = '<p class="loading-message">Loading upgrades...</p>';
+      return;
+    }
+
+    let html = '<div class="upgrade-tree">';
+    html += this.renderUpgradeNodes();
+    html += '</div>';
+    
+    container.innerHTML = html;
+
+    // Add click listeners to upgrade nodes
+    container.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const upgradeNode = target.closest('.upgrade-node');
+      if (upgradeNode && !upgradeNode.classList.contains('upgrade-locked')) {
+        const upgradeId = upgradeNode.getAttribute('data-upgrade-id');
+        if (upgradeId) {
+          this.handleUpgradePurchase(upgradeId);
+        }
+      }
+    });
+  }
+
+  private renderUpgradeNodes(): string {
+    let html = '';
+    
+    // Group all nodes by their type/category for better organization
+    const rootNodes: UpgradeNode[] = [];
+    const branchNodes: UpgradeNode[] = [];
+    const otherNodes: UpgradeNode[] = [];
+    
+    this.upgrades.forEach((node) => {
+      if (node.id === 'perma_root') {
+        rootNodes.push(node);
+      } else if (node.id.includes('branch')) {
+        branchNodes.push(node);
+      } else {
+        otherNodes.push(node);
+      }
+    });
+    
+    // Render all nodes in groups
+    if (rootNodes.length > 0) {
+      html += '<div class="upgrade-tier">';
+      html += '<h2 class="tier-title">Core</h2>';
+      rootNodes.forEach(node => {
+        html += this.renderNode(node);
+      });
+      html += '</div>';
+    }
+    
+    if (branchNodes.length > 0) {
+      html += '<div class="upgrade-tier">';
+      html += '<h2 class="tier-title">Branches</h2>';
+      branchNodes.forEach(node => {
+        html += this.renderNode(node);
+      });
+      html += '</div>';
+    }
+    
+    if (otherNodes.length > 0) {
+      html += '<div class="upgrade-tier">';
+      html += '<h2 class="tier-title">Upgrades</h2>';
+      otherNodes.forEach(node => {
+        html += this.renderNode(node);
+      });
+      html += '</div>';
+    }
+    
+    return html;
+  }
+
+  private renderNode(node: UpgradeNode): string {
+    const cost = this.getUpgradeCost(node);
+    const canAfford = this.quantumCores >= cost;
+    const isMaxed = node.currentLevel >= node.maxLevel;
+    
+    let statusClass = 'upgrade-locked';
+    if (node.unlocked) {
+      if (isMaxed) statusClass = 'upgrade-maxed';
+      else if (canAfford) statusClass = 'upgrade-available';
+      else statusClass = 'upgrade-visible';
+    }
+    
+    return `
+      <div class="upgrade-node ${statusClass}" data-upgrade-id="${node.id}">
+        <div class="upgrade-header">
+          <div class="upgrade-info">
+            <div class="upgrade-name">${node.name}</div>
+            <div class="upgrade-level">Level ${node.currentLevel}/${node.maxLevel}</div>
+          </div>
+        </div>
+        <p class="upgrade-description">${node.description}</p>
+        ${!isMaxed && node.unlocked ? `
+          <div class="upgrade-cost ${canAfford ? 'can-afford' : 'cannot-afford'}">
+            <span class="cost-label">Cost:</span>
+            <span class="cost-value">⚛️ ${cost}</span>
+          </div>
+        ` : ''}
+        ${isMaxed ? '<div class="upgrade-maxed-label">MAXED</div>' : ''}
+        ${!node.unlocked ? '<div class="upgrade-locked-label">🔒 LOCKED</div>' : ''}
+      </div>
+    `;
   }
 
   private setupEventListeners(): void {
@@ -71,74 +234,179 @@ export class UpgradePage {
       });
     }
 
-    // Tab switching
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.classList.contains('locked')) {
-          audioManager.playSFX(AudioType.SFX_CLICK);
-          return;
-        }
-        this.switchTab(btn.getAttribute('data-tab') as 'skills' | 'prestige');
+    const resetBtn = document.getElementById('reset-prestige-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        audioManager.playSFX(AudioType.SFX_CLICK);
+        this.showResetConfirmation();
       });
-    });
+    }
 
-    // Update coins display
-    setInterval(() => this.updateCoins(), 100);
+    // Update quantum cores display
+    setInterval(() => this.updateQuantumCores(), 100);
   }
 
-  private switchTab(tab: 'skills' | 'prestige'): void {
-    this.activeTab = tab;
+  private showResetConfirmation(): void {
+    const totalSpent = this.calculateTotalSpent();
+    
+    if (totalSpent === 0) {
+      alert('You haven\'t purchased any prestige upgrades yet!');
+      return;
+    }
 
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+    // Create confirmation overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'reset-confirmation-overlay';
+    overlay.innerHTML = `
+      <div class="reset-confirmation-panel">
+        <h2>⚠️ Reset Prestige Upgrades?</h2>
+        <p class="reset-warning">This will reset all prestige upgrades and refund your Quantum Cores.</p>
+        <div class="meta-reward">
+          <div class="meta-icon">⚛️</div>
+          <div class="meta-info">
+            <span class="meta-label">Quantum Cores Refunded</span>
+            <span class="meta-value">+${totalSpent} ⚛️</span>
+            <span class="meta-hint">All upgrades will be locked again</span>
+          </div>
+        </div>
+        <div class="reset-buttons">
+          <button class="reset-btn confirm" id="confirm-reset-prestige">Yes, Reset</button>
+          <button class="reset-btn cancel" id="cancel-reset-prestige">No, Keep Upgrades</button>
+        </div>
+      </div>
+    `;
+
+    this.container.appendChild(overlay);
+
+    // Add event listeners
+    document.getElementById('confirm-reset-prestige')?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_UPGRADE);
+      this.resetPrestigeUpgrades();
+      overlay.remove();
     });
 
-    // Update content
-    document.querySelectorAll('.tab-content').forEach(content => {
-      content.classList.toggle('active', content.id === `${tab}-tab`);
+    document.getElementById('cancel-reset-prestige')?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      overlay.remove();
     });
-
-    audioManager.playSFX(AudioType.SFX_CLICK);
   }
 
-  private updateCoins(): void {
-    const coinsEl = document.getElementById('header-coins');
-    if (coinsEl) {
+  private calculateTotalSpent(): number {
+    let totalSpent = 0;
+    
+    this.upgrades.forEach((node) => {
+      // Calculate total cost for all levels purchased
+      for (let i = 0; i < node.currentLevel; i++) {
+        totalSpent += Math.floor(node.baseCost * Math.pow(node.costMultiplier, i));
+      }
+    });
+    
+    return totalSpent;
+  }
+
+  private resetPrestigeUpgrades(): void {
+    const totalSpent = this.calculateTotalSpent();
+    
+    // Refund quantum cores
+    const state = gameState.getState();
+    state.quantumCores += totalSpent;
+    this.quantumCores = state.quantumCores;
+    
+    // Reset all upgrades to initial state (except root which should be unlocked)
+    this.upgrades.forEach((node) => {
+      node.currentLevel = 0;
+      node.unlocked = node.id === 'perma_root'; // Only root stays unlocked
+    });
+    
+    // Save the reset state
+    this.saveUpgradesToGameState();
+    
+    // Re-render the tree
+    this.render();
+    
+    console.log(`[Prestige] Reset complete. Refunded ${totalSpent} Quantum Cores.`);
+  }
+
+  private updateQuantumCores(): void {
+    const coresEl = document.getElementById('header-quantum-cores');
+    const prestigeEl = document.getElementById('prestige-unlocked');
+    
+    if (coresEl) {
       const state = gameState.getState();
-      coinsEl.textContent = state?.coins?.toString() || '0';
+      this.quantumCores = state?.quantumCores || 0;
+      coresEl.textContent = this.quantumCores.toString();
+      
+      if (prestigeEl) {
+        const unlockedCount = this.getUnlockedCount();
+        const totalNodes = this.upgrades.size;
+        prestigeEl.textContent = `${unlockedCount}/${totalNodes}`;
+      }
     }
   }
 
-  private renderSkillTree(): void {
-    const container = document.getElementById('skill-tree');
-    if (!container) return;
-
-    const skills = skillTreeManager.getAllSkills();
-    container.innerHTML = skillTreeManager.renderTree(skills);
-
-    // Add click listeners to skill nodes
-    container.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const skillNode = target.closest('.skill-node');
-      if (skillNode && !skillNode.classList.contains('locked')) {
-        const skillId = skillNode.getAttribute('data-skill-id');
-        if (skillId) {
-          this.handleSkillUpgrade(skillId);
-        }
+  private getUnlockedCount(): number {
+    let count = 0;
+    
+    this.upgrades.forEach((node) => {
+      if (node.currentLevel > 0) {
+        count++;
       }
     });
+    
+    return count;
   }
 
-  private handleSkillUpgrade(skillId: string): void {
-    const success = skillTreeManager.upgradeSkill(skillId);
-    if (success) {
+  private getUpgradeCost(node: UpgradeNode): number {
+    return Math.floor(node.baseCost * Math.pow(node.costMultiplier, node.currentLevel));
+  }
+
+  private handleUpgradePurchase(upgradeId: string): void {
+    const node = this.upgrades.get(upgradeId);
+    if (!node || !node.unlocked || node.currentLevel >= node.maxLevel) {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      return;
+    }
+
+    const cost = this.getUpgradeCost(node);
+    
+    if (this.quantumCores >= cost) {
+      // Deduct cost
+      this.quantumCores -= cost;
+      const state = gameState.getState();
+      state.quantumCores = this.quantumCores;
+      
+      // Upgrade node
+      node.currentLevel++;
+      
+      // Unlock connected nodes if this is first level
+      if (node.currentLevel === 1) {
+        this.unlockConnectedNodes(node);
+      }
+      
+      // Apply upgrade effect
+      this.applyUpgradeEffect(node);
+      
       audioManager.playSFX(AudioType.SFX_UPGRADE);
-      this.renderSkillTree();
+      this.saveUpgradesToGameState();
+      this.renderUpgradeTree();
     } else {
       audioManager.playSFX(AudioType.SFX_CLICK);
     }
+  }
+
+  private unlockConnectedNodes(node: UpgradeNode): void {
+    for (const connectedId of node.connectedNodes) {
+      const connectedNode = this.upgrades.get(connectedId);
+      if (connectedNode) {
+        connectedNode.unlocked = true;
+      }
+    }
+  }
+
+  private applyUpgradeEffect(node: UpgradeNode): void {
+    // This would apply the actual game effects based on the upgrade
+    // For now, just log the upgrade
+    console.log(`Upgraded ${node.name} to level ${node.currentLevel}`);
   }
 
   destroy(): void {

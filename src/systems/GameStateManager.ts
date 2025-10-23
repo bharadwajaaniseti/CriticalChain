@@ -25,6 +25,8 @@ export interface GameState {
   
   // Meta progression (persists across runs)
   metaCurrency: number;
+  quantumCores: number;
+  prestigeUpgrades: { [key: string]: { currentLevel: number; unlocked: boolean } };
   
   // Click system
   clicks: number;
@@ -90,6 +92,8 @@ class GameStateManager {
       if (saved.rank === undefined) saved.rank = 0;
       if (saved.score === undefined) saved.score = 0;
       if (saved.metaCurrency === undefined) saved.metaCurrency = 0;
+      if (saved.quantumCores === undefined) saved.quantumCores = 0;
+      if (saved.prestigeUpgrades === undefined) saved.prestigeUpgrades = {};
       
       return saved;
     }
@@ -103,6 +107,8 @@ class GameStateManager {
       maxChain: 0,
       score: 0,
       metaCurrency: 0,
+      quantumCores: 0,
+      prestigeUpgrades: {},
       clicks: 2,
       maxClicks: 2,
       timeRemaining: 10,
@@ -336,16 +342,54 @@ class GameStateManager {
   }
 
   /**
+   * Start a fresh run - reset coins, rank, and skill tree but keep quantum cores and prestige upgrades
+   */
+  startFreshRun(): void {
+    // Reset run-specific stats only (keep quantum cores, prestige upgrades, and base upgrades)
+    this.state.coins = 0;
+    this.state.shots = 0;
+    this.state.time = 0;
+    this.state.rank = 0;
+    this.state.currentChain = 0;
+    this.state.maxChain = 0;
+    this.state.score = 0;
+    this.state.clicks = 2;
+    this.state.maxClicks = 2;
+    this.state.timeRemaining = 10;
+    this.state.maxTime = 10;
+    this.state.gameActive = false;
+    this.state.totalAtomsDestroyed = 0;
+    
+    // Reset base upgrades (skill tree) but keep prestige upgrades
+    this.state.upgrades = {
+      neutronReflector: 0,
+      pierce: 0,
+      homing: 0,
+      momentum: 0,
+      startingNeutrons: 2,
+      chainMultiplier: 1,
+      atomSpawnRate: 1,
+    };
+    
+    this.saveGame();
+    console.log('[GameState] Fresh run started - coins, rank, and skill tree reset');
+  }
+
+  /**
    * Reset run and award meta currency based on rank
    * Returns the meta currency earned
    */
   resetRun(): number {
-    // Calculate meta currency based on rank (1 meta per rank level)
+    // Calculate meta currency and quantum cores based on rank
     const metaEarned = this.state.rank;
-    this.state.metaCurrency += metaEarned;
+    const quantumEarned = Math.floor(this.state.rank / 2); // 1 quantum core per 2 ranks
     
-    // Reset run-specific stats (keep metaCurrency and highestRank)
+    this.state.metaCurrency += metaEarned;
+    this.state.quantumCores += quantumEarned;
+    
+    // Reset run-specific stats (keep metaCurrency, quantumCores, and highestRank)
     const preservedMetaCurrency = this.state.metaCurrency;
+    const preservedQuantumCores = this.state.quantumCores;
     const preservedHighestRank = this.state.highestRank;
     
     this.state.coins = 0;
@@ -364,20 +408,65 @@ class GameStateManager {
     
     // Restore persistent stats
     this.state.metaCurrency = preservedMetaCurrency;
+    this.state.quantumCores = preservedQuantumCores;
     this.state.highestRank = preservedHighestRank;
     
     this.saveGame();
-    console.log(`[GameState] Run reset - Earned ${metaEarned} meta currency (total: ${this.state.metaCurrency})`);
+    console.log(`[GameState] Run reset - Earned ${metaEarned} meta currency (total: ${this.state.metaCurrency}) and ${quantumEarned} quantum cores (total: ${this.state.quantumCores})`);
     
     return metaEarned;
   }
 
   /**
-   * Reset game
+   * Add quantum cores (for testing or rewards)
+   */
+  addQuantumCores(amount: number): void {
+    this.state.quantumCores += amount;
+    this.saveGame();
+  }
+
+  /**
+   * Reset game - completely wipe all progress
    */
   reset(): void {
-    this.state = this.initializeState();
+    // Clear localStorage first
+    localStorage.removeItem('CriticalChain_Save');
+    
+    // Reset to fresh state
+    this.state = {
+      coins: 0,
+      shots: 0,
+      time: 0,
+      rank: 0,
+      currentChain: 0,
+      maxChain: 0,
+      score: 0,
+      metaCurrency: 0,
+      quantumCores: 0,
+      prestigeUpgrades: {},
+      clicks: 2,
+      maxClicks: 2,
+      timeRemaining: 10,
+      maxTime: 10,
+      gameActive: false,
+      upgrades: {
+        neutronReflector: 0,
+        pierce: 0,
+        homing: 0,
+        momentum: 0,
+        startingNeutrons: 2,
+        chainMultiplier: 1,
+        atomSpawnRate: 1,
+      },
+      lastSave: Date.now(),
+      gameStartTime: Date.now(),
+      totalAtomsDestroyed: 0,
+      highestRank: 0,
+    };
+    
+    // Save the fresh state
     this.saveGame();
+    console.log('[GameState] All progress reset!');
   }
 }
 

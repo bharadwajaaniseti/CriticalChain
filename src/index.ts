@@ -109,3 +109,11 @@ class CriticalChainGame {
 
 // Start the game when module loads
 new CriticalChainGame();
+
+// Dev helper: Add quantum cores for testing
+// Usage in browser console: addQuantumCores(100)
+import { gameState } from './systems/GameStateManager';
+(window as any).addQuantumCores = (amount: number) => {
+  gameState.addQuantumCores(amount);
+  console.log(`Added ${amount} quantum cores. Total: ${gameState.getState().quantumCores}`);
+};

@@ -90,9 +90,51 @@ export class GamePage {
     if (backBtn) {
       backBtn.addEventListener('click', () => {
         audioManager.playSFX(AudioType.SFX_CLICK);
-        NavigationManager.navigateTo('home');
+        this.showReturnConfirmation();
       });
     }
+  }
+
+  private showReturnConfirmation(): void {
+    const state = gameState.getState();
+    const metaEarned = state.rank; // Meta currency = rank level
+    
+    // Create confirmation overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'reset-confirmation-overlay';
+    overlay.innerHTML = `
+      <div class="reset-confirmation-panel">
+        <h2>⚠️ Return to Menu?</h2>
+        <p class="reset-warning">All skill tree progress and coins will be reset!</p>
+        <div class="meta-reward">
+          <div class="meta-icon">⭐</div>
+          <div class="meta-info">
+            <span class="meta-label">Meta Currency Reward</span>
+            <span class="meta-value">+${metaEarned} ⭐</span>
+            <span class="meta-hint">Based on Rank ${state.rank}</span>
+          </div>
+        </div>
+        <div class="reset-buttons">
+          <button class="reset-btn confirm" id="confirm-reset">Yes, Reset</button>
+          <button class="reset-btn cancel" id="cancel-reset">No, Continue</button>
+        </div>
+      </div>
+    `;
+
+    this.container.appendChild(overlay);
+
+    // Add event listeners
+    document.getElementById('confirm-reset')?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      const earned = gameState.resetRun();
+      overlay.remove();
+      NavigationManager.navigateTo('home');
+    });
+
+    document.getElementById('cancel-reset')?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      overlay.remove();
+    });
   }
 
   private initializeGame(): void {
@@ -198,11 +240,6 @@ export class GamePage {
   }
 
   private showGameOver(): void {
-    // Automatically navigate to skill tree after round ends
-    setTimeout(() => {
-      NavigationManager.navigateTo('skilltree');
-    }, 1500); // 1.5 second delay to show stats
-
     // Show game over overlay
     const overlay = document.createElement('div');
     overlay.className = 'game-over-overlay';
@@ -229,11 +266,29 @@ export class GamePage {
             <span class="stat-value">🏆 ${rank}</span>
           </div>
         </div>
-        <p class="game-over-hint">Going to Skill Tree...</p>
+        <div class="game-over-buttons">
+          <button class="game-over-btn primary" id="play-again-btn">🔄 Play Again</button>
+          <button class="game-over-btn secondary" id="skill-tree-btn">🌟 Skill Tree</button>
+        </div>
       </div>
     `;
 
     this.container.appendChild(overlay);
+
+    // Add event listeners for buttons
+    document.getElementById('play-again-btn')?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      overlay.remove();
+      // Reset game state and restart
+      this.gameOverShown = false;
+      gameState.startGame();
+    });
+
+    document.getElementById('skill-tree-btn')?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      overlay.remove();
+      NavigationManager.navigateTo('skilltree');
+    });
   }
 
   destroy(): void {
