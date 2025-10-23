@@ -94,7 +94,7 @@ export class SkillTreeManager {
     // Unlock path unlocks if root is purchased
     const root = this.skills.get('root');
     if (root && root.currentLevel > 0) {
-      ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics'].forEach(id => {
+      ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics', 'economy_basics', 'special_atom_basics'].forEach(id => {
         const node = this.skills.get(id);
         if (node) node.unlocked = true;
       });
@@ -141,7 +141,7 @@ export class SkillTreeManager {
   private unlockChildren(skillId: string): void {
     // Define parent-child relationships
     const relationships: { [key: string]: string[] } = {
-      'root': ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics'],
+      'root': ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics', 'economy_basics', 'special_atom_basics'],
       'neutron_basics': ['neutron_count_1', 'neutron_speed_1', 'neutron_lifetime_1', 'neutron_size_1'],
       'neutron_count_1': ['neutron_count_2'],
       'neutron_count_2': ['neutron_count_3'],

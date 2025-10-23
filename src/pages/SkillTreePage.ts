@@ -82,7 +82,7 @@ export class SkillTreePage {
 
   private defineConnections(): void {
     const connections: { [key: string]: string[] } = {
-      'root': ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics'],
+      'root': ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics', 'economy_basics', 'special_atom_basics'],
       'neutron_basics': ['neutron_count_1', 'neutron_speed_1', 'neutron_lifetime_1', 'neutron_size_1'],
       'neutron_count_1': ['neutron_count_2'],
       'neutron_count_2': ['neutron_count_3'],
@@ -408,107 +408,126 @@ export class SkillTreePage {
     if (!this.canvas) return;
 
     // Fixed positions for all nodes to prevent any overlap
+    // Layout: Root at center, 6 paths in a radial pattern
     const positions: { [key: string]: { x: number; y: number } } = {
-      // Root node
-      'root': { x: 200, y: 2500 },
+      // Root node at center
+      'root': { x: 2000, y: 3000 },
       
-      // Path unlocks (column 1) - spread out more vertically
-      'neutron_basics': { x: 700, y: 400 },
-      'atom_basics': { x: 700, y: 1400 },
-      'chain_basics': { x: 700, y: 2400 },
-      'resource_basics': { x: 700, y: 3400 },
-      'economy_basics': { x: 700, y: 4400 },
-      'special_atom_basics': { x: 700, y: 5400 },
+      // Path unlocks in radial pattern around root (600px radius)
+      'neutron_basics': { x: 2000, y: 2200 },        // Top
+      'atom_basics': { x: 2520, y: 2400 },           // Top-Right
+      'chain_basics': { x: 2520, y: 3600 },          // Bottom-Right
+      'resource_basics': { x: 2000, y: 3800 },       // Bottom
+      'economy_basics': { x: 1480, y: 3600 },        // Bottom-Left
+      'special_atom_basics': { x: 1480, y: 2400 },   // Top-Left
       
-      // Neutron path (rows 1-4)
-      'neutron_count_1': { x: 1200, y: 150 },
-      'neutron_count_2': { x: 1700, y: 150 },
-      'neutron_count_3': { x: 2200, y: 150 },
+      // === NEUTRON PATH (Top branch) ===
+      // Neutron count line (horizontal)
+      'neutron_count_1': { x: 2000, y: 1700 },
+      'neutron_count_2': { x: 2000, y: 1400 },
+      'neutron_count_3': { x: 2000, y: 1100 },
       
-      'neutron_speed_1': { x: 1200, y: 300 },
-      'neutron_speed_2': { x: 1700, y: 300 },
-      'neutron_pierce': { x: 2200, y: 300 },
+      // Neutron speed line (diagonal right)
+      'neutron_speed_1': { x: 2300, y: 1900 },
+      'neutron_speed_2': { x: 2600, y: 1700 },
+      'neutron_pierce': { x: 2900, y: 1500 },
       
-      'neutron_lifetime_1': { x: 1200, y: 450 },
-      'neutron_lifetime_2': { x: 1700, y: 450 },
-      'neutron_homing': { x: 2200, y: 450 },
+      // Neutron lifetime line (diagonal left)
+      'neutron_lifetime_1': { x: 1700, y: 1900 },
+      'neutron_lifetime_2': { x: 1400, y: 1700 },
+      'neutron_homing': { x: 1100, y: 1500 },
       
-      'neutron_size_1': { x: 1200, y: 600 },
+      // Neutron size (straight up)
+      'neutron_size_1': { x: 2000, y: 1900 },
       
-      // Critical neutron system
-      'critical_neutron_unlock': { x: 1200, y: 800 },
-      'critical_neutron_chance_1': { x: 1700, y: 750 },
-      'critical_neutron_effect_1': { x: 1700, y: 900 },
+      // Critical neutron system (right side)
+      'critical_neutron_unlock': { x: 2400, y: 2200 },
+      'critical_neutron_chance_1': { x: 2700, y: 2100 },
+      'critical_neutron_effect_1': { x: 2700, y: 2300 },
       
-      // Atom path
-      'atom_spawn_rate_1': { x: 1200, y: 1200 },
-      'atom_spawn_rate_2': { x: 1700, y: 1200 },
+      // === ATOM PATH (Top-Right branch) ===
+      // Atom spawn rate (diagonal out)
+      'atom_spawn_rate_1': { x: 2800, y: 2200 },
+      'atom_spawn_rate_2': { x: 3100, y: 2100 },
       
-      'atom_size_1': { x: 1200, y: 1350 },
+      // Atom size (right)
+      'atom_size_1': { x: 2900, y: 2400 },
       
-      'atom_lifetime_1': { x: 1200, y: 1500 },
+      // Atom lifetime (diagonal down-right)
+      'atom_lifetime_1': { x: 2800, y: 2600 },
       
-      'atom_neutron_count_1': { x: 1200, y: 1650 },
-      'atom_neutron_count_2': { x: 1700, y: 1650 },
-      'atom_neutron_count_3': { x: 2200, y: 1650 },
+      // Atom neutron count (horizontal right)
+      'atom_neutron_count_1': { x: 2900, y: 2400 },
+      'atom_neutron_count_2': { x: 3200, y: 2400 },
+      'atom_neutron_count_3': { x: 3500, y: 2400 },
       
       // Atom shockwave system
-      'atom_shockwave_unlock': { x: 1200, y: 1850 },
-      'atom_shockwave_force_1': { x: 1700, y: 1850 },
+      'atom_shockwave_unlock': { x: 2900, y: 2800 },
+      'atom_shockwave_force_1': { x: 3200, y: 2800 },
       
-      // Chain path
-      'chain_multiplier_1': { x: 1200, y: 2200 },
-      'chain_multiplier_2': { x: 1700, y: 2200 },
-      'chain_multiplier_3': { x: 2200, y: 2200 },
+      // === CHAIN PATH (Bottom-Right branch) ===
+      // Chain multiplier (horizontal right)
+      'chain_multiplier_1': { x: 2900, y: 3600 },
+      'chain_multiplier_2': { x: 3200, y: 3600 },
+      'chain_multiplier_3': { x: 3500, y: 3600 },
       
-      'momentum': { x: 1700, y: 2400 },
-      'neutron_reflector': { x: 1200, y: 2600 },
+      // Momentum (diagonal down-right)
+      'momentum': { x: 2800, y: 3900 },
       
-      // Resource path
-      'max_clicks_1': { x: 1200, y: 3200 },
-      'max_clicks_2': { x: 1700, y: 3200 },
-      'max_clicks_3': { x: 2200, y: 3200 },
-      'max_clicks_4': { x: 2700, y: 3200 },
+      // Reflector (down from path)
+      'neutron_reflector': { x: 2520, y: 3900 },
       
-      'max_time_1': { x: 1200, y: 3400 },
-      'max_time_2': { x: 1700, y: 3400 },
-      'max_time_3': { x: 2200, y: 3400 },
-      'max_time_4': { x: 2700, y: 3400 },
+      // === RESOURCE PATH (Bottom branch) ===
+      // Max clicks (horizontal)
+      'max_clicks_1': { x: 2000, y: 4100 },
+      'max_clicks_2': { x: 2000, y: 4400 },
+      'max_clicks_3': { x: 2000, y: 4700 },
+      'max_clicks_4': { x: 2000, y: 5000 },
       
-      // Click shockwave system
-      'click_shockwave_unlock': { x: 1200, y: 3650 },
-      'click_shockwave_radius_1': { x: 1700, y: 3650 },
+      // Max time (diagonal left)
+      'max_time_1': { x: 1700, y: 4100 },
+      'max_time_2': { x: 1400, y: 4300 },
+      'max_time_3': { x: 1100, y: 4500 },
+      'max_time_4': { x: 800, y: 4700 },
       
-      // Economy path
-      'base_coin_value_1': { x: 1200, y: 4200 },
-      'base_coin_value_2': { x: 1700, y: 4200 },
+      // Click shockwave system (diagonal right)
+      'click_shockwave_unlock': { x: 2300, y: 4100 },
+      'click_shockwave_radius_1': { x: 2600, y: 4300 },
       
-      'skill_cost_reduction_1': { x: 1200, y: 4400 },
+      // === ECONOMY PATH (Bottom-Left branch) ===
+      // Base coin value (horizontal left)
+      'base_coin_value_1': { x: 1100, y: 3600 },
+      'base_coin_value_2': { x: 700, y: 3600 },
       
-      'starting_coins_1': { x: 1200, y: 4600 },
+      // Skill cost reduction (diagonal down-left)
+      'skill_cost_reduction_1': { x: 1200, y: 3900 },
       
-      // Special atoms path - Time atoms
-      'unlock_time_atoms': { x: 1200, y: 5200 },
-      'time_atom_chance_1': { x: 1700, y: 5100 },
-      'time_atom_value_1': { x: 1700, y: 5300 },
+      // Starting coins (left from path)
+      'starting_coins_1': { x: 900, y: 3900 },
       
-      // Special atoms path - Supernova
-      'unlock_supernova_atoms': { x: 1200, y: 5500 },
-      'supernova_atom_chance_1': { x: 1700, y: 5400 },
-      'supernova_atom_neutrons_1': { x: 1700, y: 5600 },
+      // === SPECIAL ATOMS PATH (Top-Left branch) ===
+      // Time atoms (diagonal up-left)
+      'unlock_time_atoms': { x: 1100, y: 2100 },
+      'time_atom_chance_1': { x: 800, y: 1900 },
+      'time_atom_value_1': { x: 800, y: 2300 },
       
-      // Special atoms path - Black Hole
-      'unlock_black_hole_atoms': { x: 1200, y: 5800 },
-      'black_hole_atom_chance_1': { x: 1700, y: 5700 },
-      'black_hole_pull_radius_1': { x: 1700, y: 5900 },
+      // Supernova atoms (left from path)
+      'unlock_supernova_atoms': { x: 1000, y: 2400 },
+      'supernova_atom_chance_1': { x: 600, y: 2300 },
+      'supernova_atom_neutrons_1': { x: 600, y: 2500 },
       
-      // Ultimates (far right column)
-      'ultimate_neutron': { x: 3200, y: 600 },
-      'ultimate_atom': { x: 3200, y: 1500 },
-      'ultimate_chain': { x: 3200, y: 2400 },
-      'ultimate_resource': { x: 3200, y: 3400 },
-      'ultimate_economy': { x: 3200, y: 4400 },
-      'ultimate_fission': { x: 3200, y: 5500 },
+      // Black Hole atoms (diagonal down-left)
+      'unlock_black_hole_atoms': { x: 1100, y: 2700 },
+      'black_hole_atom_chance_1': { x: 800, y: 2600 },
+      'black_hole_pull_radius_1': { x: 800, y: 2800 },
+      
+      // === ULTIMATES (Outer ring) ===
+      'ultimate_neutron': { x: 2000, y: 800 },           // Top
+      'ultimate_atom': { x: 3300, y: 2100 },             // Right
+      'ultimate_chain': { x: 3800, y: 3600 },            // Bottom-Right
+      'ultimate_resource': { x: 2000, y: 5300 },         // Bottom
+      'ultimate_economy': { x: 400, y: 3600 },           // Left
+      'ultimate_fission': { x: 500, y: 2400 },           // Top-Left
     };
 
     // Apply positions
@@ -540,18 +559,18 @@ export class SkillTreePage {
       this.scale = savedCamera.scale;
       console.log('[SkillTree] Restored camera:', savedCamera);
     } else {
-      // First time - center on the middle of the visible tree
-      // Tree spans roughly from x:200 to x:3200, y:150 to y:5900
-      const treeCenterX = 1700; // Middle of tree
-      const treeCenterY = 3000; // Middle of tree
+      // First time - center on root node
+      // Root is at (2000, 3000), tree spans from ~400 to ~3800 in both dimensions
+      const treeCenterX = 2000; // Root X position
+      const treeCenterY = 3000; // Root Y position
       
-      // Start with smaller scale to see full tree
-      this.scale = 0.3;
+      // Start with scale that shows entire tree
+      this.scale = 0.25;
       
       this.offsetX = this.canvas.width / 2 - treeCenterX * this.scale;
       this.offsetY = this.canvas.height / 2 - treeCenterY * this.scale;
       
-      console.log('[SkillTree] Centered on tree overview:', { scale: this.scale });
+      console.log('[SkillTree] Centered on root at scale:', this.scale);
       
       // Save initial position
       this.saveCameraPosition();
