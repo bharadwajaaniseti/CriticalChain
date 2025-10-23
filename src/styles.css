@@ -1085,6 +1085,17 @@ body {
   position: relative;
 }
 
+.settings-panel-wide {
+  max-width: 900px;
+}
+
+.volume-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
 .settings-panel .close-btn {
   position: absolute;
   top: 20px;
@@ -1725,6 +1736,33 @@ body {
 
 .credits-link:hover::after {
   width: 100%;
+}
+
+.play-sound-btn {
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.2) 0%, rgba(79, 172, 254, 0.2) 100%);
+  border: 2px solid rgba(0, 255, 170, 0.4);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  margin-left: 8px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 255, 170, 0.2);
+}
+
+.play-sound-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.4) 0%, rgba(79, 172, 254, 0.4) 100%);
+  border-color: var(--primary);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 15px rgba(0, 255, 170, 0.5);
+  text-shadow: 0 0 10px var(--primary);
+}
+
+.play-sound-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 255, 170, 0.3);
 }
 
 .tech-list {

@@ -16,6 +16,11 @@ export class HomePage {
     this.render();
     this.setupEventListeners();
     this.startCurrencyUpdate();
+    
+    // Start background music
+    audioManager.preloadAudio(AudioType.HOME_MUSIC_BG).then(() => {
+      audioManager.playMusic(AudioType.HOME_MUSIC_BG);
+    });
   }
 
   private render(): void {
@@ -99,7 +104,7 @@ export class HomePage {
 
     if (playBtn) {
       playBtn.addEventListener('click', () => {
-        audioManager.playSFX(AudioType.SFX_CLICK);
+        audioManager.playSFX(AudioType.HOME_UI_SELECT);
         // Start fresh run - reset coins, rank, and skill tree (keep quantum cores and prestige upgrades)
         gameState.startFreshRun();
         NavigationManager.navigateTo('game');
@@ -108,21 +113,21 @@ export class HomePage {
 
     if (upgradesBtn) {
       upgradesBtn.addEventListener('click', () => {
-        audioManager.playSFX(AudioType.SFX_CLICK);
+        audioManager.playSFX(AudioType.HOME_UI_SELECT);
         NavigationManager.navigateTo('upgrades');
       });
     }
 
     if (settingsBtn) {
       settingsBtn.addEventListener('click', () => {
-        audioManager.playSFX(AudioType.SFX_CLICK);
+        audioManager.playSFX(AudioType.HOME_UI_SELECT);
         this.showSettings();
       });
     }
 
     if (creditsBtn) {
       creditsBtn.addEventListener('click', () => {
-        audioManager.playSFX(AudioType.SFX_CLICK);
+        audioManager.playSFX(AudioType.HOME_UI_SELECT);
         this.showCredits();
       });
     }
@@ -132,34 +137,142 @@ export class HomePage {
     const sfxVolume = audioManager.getSFXVolume();
     const musicVolume = audioManager.getMusicVolume();
     
+    // Get individual volumes for each sound
+    const volumeClick = audioManager.getVolume(AudioType.SFX_CLICK);
+    const volumeReaction = audioManager.getVolume(AudioType.SFX_REACTION);
+    const volumeUpgrade = audioManager.getVolume(AudioType.SFX_UPGRADE);
+    const volumeAtomBreak = audioManager.getVolume(AudioType.SFX_ATOM_BREAK);
+    const volumeHomeUI = audioManager.getVolume(AudioType.HOME_UI_SELECT);
+    const volumeSkillPurchase = audioManager.getVolume(AudioType.SKILLTREE_PURCHASE);
+    const volumeSkillHover = audioManager.getVolume(AudioType.SKILLTREE_HOVER);
+    const volumeMusicIdle = audioManager.getVolume(AudioType.MUSIC_IDLE);
+    const volumeMusicReaction = audioManager.getVolume(AudioType.MUSIC_REACTION);
+    const volumeHomeBG = audioManager.getVolume(AudioType.HOME_MUSIC_BG);
+    
     // Create settings overlay
     const overlay = document.createElement('div');
     overlay.className = 'settings-overlay';
     overlay.innerHTML = `
-      <div class="settings-panel">
+      <div class="settings-panel settings-panel-wide">
         <button class="close-btn" id="close-settings">✕</button>
         <h2>⚙️ Settings</h2>
         <div class="settings-content">
           <div class="setting-section">
-            <h3>Audio</h3>
-            <div class="volume-control">
-              <label class="volume-label">
-                <span class="volume-icon">🔊</span>
-                <span>Sound Effects Volume</span>
-              </label>
-              <div class="volume-slider-container">
-                <input type="range" id="sfx-volume" class="volume-slider" min="0" max="100" value="${sfxVolume * 100}">
-                <span class="volume-value" id="sfx-value">${Math.round(sfxVolume * 100)}%</span>
+            <h3>🔊 Sound Effects Volume</h3>
+            <div class="volume-grid">
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">�️</span>
+                  <span>UI Click</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-click" class="volume-slider" min="0" max="100" value="${volumeClick * 100}" data-type="${AudioType.SFX_CLICK}">
+                  <span class="volume-value" id="val-click">${Math.round(volumeClick * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">⚛️</span>
+                  <span>Reaction Trigger</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-reaction" class="volume-slider" min="0" max="100" value="${volumeReaction * 100}" data-type="${AudioType.SFX_REACTION}">
+                  <span class="volume-value" id="val-reaction">${Math.round(volumeReaction * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">⬆️</span>
+                  <span>Upgrade Unlock</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-upgrade" class="volume-slider" min="0" max="100" value="${volumeUpgrade * 100}" data-type="${AudioType.SFX_UPGRADE}">
+                  <span class="volume-value" id="val-upgrade">${Math.round(volumeUpgrade * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">💥</span>
+                  <span>Atom Break</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-atom-break" class="volume-slider" min="0" max="100" value="${volumeAtomBreak * 100}" data-type="${AudioType.SFX_ATOM_BREAK}">
+                  <span class="volume-value" id="val-atom-break">${Math.round(volumeAtomBreak * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">�</span>
+                  <span>Home UI Select</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-home-ui" class="volume-slider" min="0" max="100" value="${volumeHomeUI * 100}" data-type="${AudioType.HOME_UI_SELECT}">
+                  <span class="volume-value" id="val-home-ui">${Math.round(volumeHomeUI * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">💰</span>
+                  <span>Skill Purchase</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-skill-purchase" class="volume-slider" min="0" max="100" value="${volumeSkillPurchase * 100}" data-type="${AudioType.SKILLTREE_PURCHASE}">
+                  <span class="volume-value" id="val-skill-purchase">${Math.round(volumeSkillPurchase * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">👆</span>
+                  <span>Skill Hover</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-skill-hover" class="volume-slider" min="0" max="100" value="${volumeSkillHover * 100}" data-type="${AudioType.SKILLTREE_HOVER}">
+                  <span class="volume-value" id="val-skill-hover">${Math.round(volumeSkillHover * 100)}%</span>
+                </div>
               </div>
             </div>
-            <div class="volume-control">
-              <label class="volume-label">
-                <span class="volume-icon">🎵</span>
-                <span>Music Volume</span>
-              </label>
-              <div class="volume-slider-container">
-                <input type="range" id="music-volume" class="volume-slider" min="0" max="100" value="${musicVolume * 100}">
-                <span class="volume-value" id="music-value">${Math.round(musicVolume * 100)}%</span>
+          </div>
+          
+          <div class="setting-section">
+            <h3>🎵 Music Volume</h3>
+            <div class="volume-grid">
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">🏠</span>
+                  <span>Home Background</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-home-bg" class="volume-slider" min="0" max="100" value="${volumeHomeBG * 100}" data-type="${AudioType.HOME_MUSIC_BG}">
+                  <span class="volume-value" id="val-home-bg">${Math.round(volumeHomeBG * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">🎮</span>
+                  <span>Idle Music</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-music-idle" class="volume-slider" min="0" max="100" value="${volumeMusicIdle * 100}" data-type="${AudioType.MUSIC_IDLE}">
+                  <span class="volume-value" id="val-music-idle">${Math.round(volumeMusicIdle * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">⚡</span>
+                  <span>Reaction Music</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-music-reaction" class="volume-slider" min="0" max="100" value="${volumeMusicReaction * 100}" data-type="${AudioType.MUSIC_REACTION}">
+                  <span class="volume-value" id="val-music-reaction">${Math.round(volumeMusicReaction * 100)}%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -175,24 +288,29 @@ export class HomePage {
 
     this.container.appendChild(overlay);
 
-    // Add event listeners
-    const sfxSlider = document.getElementById('sfx-volume') as HTMLInputElement;
-    const musicSlider = document.getElementById('music-volume') as HTMLInputElement;
-    const sfxValueDisplay = document.getElementById('sfx-value');
-    const musicValueDisplay = document.getElementById('music-value');
-
-    sfxSlider?.addEventListener('input', (e) => {
-      const value = parseInt((e.target as HTMLInputElement).value) / 100;
-      audioManager.setSFXVolume(value);
-      if (sfxValueDisplay) sfxValueDisplay.textContent = `${Math.round(value * 100)}%`;
-      // Play a test sound
-      audioManager.playSFX(AudioType.SFX_CLICK);
-    });
-
-    musicSlider?.addEventListener('input', (e) => {
-      const value = parseInt((e.target as HTMLInputElement).value) / 100;
-      audioManager.setMusicVolume(value);
-      if (musicValueDisplay) musicValueDisplay.textContent = `${Math.round(value * 100)}%`;
+    // Add event listeners for all volume sliders
+    const volumeSliders = overlay.querySelectorAll('.volume-slider');
+    volumeSliders.forEach((slider) => {
+      const inputSlider = slider as HTMLInputElement;
+      const audioType = inputSlider.getAttribute('data-type') as AudioType;
+      const sliderId = inputSlider.id;
+      const valueDisplayId = sliderId.replace('vol-', 'val-');
+      const valueDisplay = document.getElementById(valueDisplayId);
+      
+      inputSlider.addEventListener('input', (e) => {
+        const value = parseInt((e.target as HTMLInputElement).value) / 100;
+        audioManager.setVolume(audioType, value);
+        if (valueDisplay) valueDisplay.textContent = `${Math.round(value * 100)}%`;
+        
+        // Play a preview sound for SFX types
+        if (audioType !== AudioType.HOME_MUSIC_BG && 
+            audioType !== AudioType.MUSIC_IDLE && 
+            audioType !== AudioType.MUSIC_REACTION) {
+          audioManager.preloadAudio(audioType).then(() => {
+            audioManager.playSFX(audioType);
+          });
+        }
+      });
     });
 
     document.getElementById('reset-all-progress')?.addEventListener('click', () => {
@@ -200,7 +318,7 @@ export class HomePage {
     });
 
     const closeSettings = () => {
-      audioManager.playSFX(AudioType.SFX_CLICK);
+      audioManager.playSFX(AudioType.HOME_UI_SELECT);
       document.removeEventListener('keydown', handleEscape);
       overlay.remove();
     };
@@ -258,7 +376,7 @@ export class HomePage {
     this.container.appendChild(confirmOverlay);
 
     document.getElementById('confirm-reset-all')?.addEventListener('click', () => {
-      audioManager.playSFX(AudioType.SFX_UPGRADE);
+      audioManager.playSFX(AudioType.HOME_UI_SELECT);
       gameState.reset();
       confirmOverlay.remove();
       settingsOverlay.remove();
@@ -268,7 +386,7 @@ export class HomePage {
     });
 
     document.getElementById('cancel-reset-all')?.addEventListener('click', () => {
-      audioManager.playSFX(AudioType.SFX_CLICK);
+      audioManager.playSFX(AudioType.HOME_UI_SELECT);
       confirmOverlay.remove();
     });
   }
@@ -314,11 +432,20 @@ export class HomePage {
             </div>
             
             <div class="credits-section slide-in" style="animation-delay: 0.2s">
-              <div class="section-icon music-icon" id="music-sound-icon">🎵</div>
+              <div class="section-icon music-icon">🎵</div>
               <div class="section-content">
                 <h3>Sound Design</h3>
-                <p>Audio by <a href="https://pixabay.com/users/virtual_vibes-51361309/" class="credits-link">Dilip</a> from  <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=379990/" class="credits-link">Pixabay</a></p>
-                <p class="sound-hint">💡 Click the icon to hear!</p>
+                <p><strong>Impact Sound:</strong> <a href="https://pixabay.com/users/virtual_vibes-51361309/" class="credits-link">Dilip</a> from <a href="https://pixabay.com/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-impact">▶️</button></p>
+                <p><strong>Home UI Sound:</strong> <a href="https://pixabay.com/users/freesound_community-46691455/" class="credits-link">freesound_community</a> from <a href="https://pixabay.com/sound-effects/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-home-ui">▶️</button></p>
+                <p><strong>Skill Tree Upgrade:</strong> <a href="https://pixabay.com/users/soundreality-31074404/" class="credits-link">Jurij</a> from <a href="https://pixabay.com/sound-effects/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-skilltree-upgrade">▶️</button></p>
+                <p><strong>Skill Tree Hover:</strong> <a href="https://pixabay.com/users/irinairinafomicheva-25140203/" class="credits-link">irinairinafomicheva</a> from <a href="https://pixabay.com/sound-effects/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-skilltree-hover">▶️</button></p>
+                <p><strong>UI Click Sound:</strong> <a href="https://pixabay.com/users/dragon-studio-38165424/" class="credits-link">DRAGON-STUDIO</a> from <a href="https://pixabay.com/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-click">▶️</button></p>
+                <p><strong>Reaction Sound:</strong> <a href="https://pixabay.com/users/blendertimer-9538909/" class="credits-link">Daniel Roberts</a> from <a href="https://pixabay.com/sound-effects/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-reaction">▶️</button></p>
+                <p><strong>Upgrade Unlock Sound:</strong> <a href="https://pixabay.com/users/abhicreates-21479734/" class="credits-link">Abhishek Vishwakarma</a> from <a href="https://pixabay.com/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-upgrade-unlock">▶️</button></p>
+                <p><strong>Idle Music:</strong> <a href="https://pixabay.com/users/electronic-senses-18259555/" class="credits-link">Joel palahi gallego</a> from <a href="https://pixabay.com/music/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-idle-music">▶️</button></p>
+                <p><strong>Reaction Music:</strong> <a href="https://pixabay.com/users/freesound_community-46691455/" class="credits-link">freesound_community</a> from <a href="https://pixabay.com/" class="credits-link">Pixabay</a> <button class="play-sound-btn" id="play-reaction-music">▶️</button></p>
+                <p><strong>Home Background Music:</strong> Kevin MacLeod via <a href="https://freepd.com/electronic.php" class="credits-link">FreePD</a></p>
+                <p class="sound-hint">💡 Click the play buttons to preview each sound!</p>
               </div>
             </div>
           </div>
@@ -357,7 +484,7 @@ export class HomePage {
     this.container.appendChild(overlay);
 
     const closeCredits = () => {
-      audioManager.playSFX(AudioType.SFX_CLICK);
+      audioManager.playSFX(AudioType.HOME_UI_SELECT);
       document.removeEventListener('keydown', handleEscape);
       overlay.remove();
     };
@@ -370,10 +497,68 @@ export class HomePage {
 
     document.getElementById('close-credits')?.addEventListener('click', closeCredits);
 
-    // Add click handler for music icon to play thud sound
-    const musicIcon = document.getElementById('music-sound-icon');
-    musicIcon?.addEventListener('click', () => {
-      audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+    // Add click handlers for sound preview buttons
+    document.getElementById('play-impact')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.SFX_ATOM_BREAK).then(() => {
+        audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+      });
+    });
+
+    document.getElementById('play-home-ui')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.HOME_UI_SELECT).then(() => {
+        audioManager.playSFX(AudioType.HOME_UI_SELECT);
+      });
+    });
+
+    document.getElementById('play-skilltree-upgrade')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.SKILLTREE_PURCHASE).then(() => {
+        audioManager.playSFX(AudioType.SKILLTREE_PURCHASE);
+      });
+    });
+
+    document.getElementById('play-skilltree-hover')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.SKILLTREE_HOVER).then(() => {
+        audioManager.playSFX(AudioType.SKILLTREE_HOVER);
+      });
+    });
+
+    document.getElementById('play-click')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.SFX_CLICK).then(() => {
+        audioManager.playSFX(AudioType.SFX_CLICK);
+      });
+    });
+
+    document.getElementById('play-reaction')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.SFX_REACTION).then(() => {
+        audioManager.playSFX(AudioType.SFX_REACTION);
+      });
+    });
+
+    document.getElementById('play-upgrade-unlock')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.SFX_UPGRADE).then(() => {
+        audioManager.playSFX(AudioType.SFX_UPGRADE);
+      });
+    });
+
+    document.getElementById('play-idle-music')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.MUSIC_IDLE).then(() => {
+        audioManager.playSFX(AudioType.MUSIC_IDLE);
+      });
+    });
+
+    document.getElementById('play-reaction-music')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      audioManager.preloadAudio(AudioType.MUSIC_REACTION).then(() => {
+        audioManager.playSFX(AudioType.MUSIC_REACTION);
+      });
     });
 
     // Close on background click
@@ -404,5 +589,8 @@ export class HomePage {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
+    
+    // Stop background music
+    audioManager.stopMusic();
   }
 }

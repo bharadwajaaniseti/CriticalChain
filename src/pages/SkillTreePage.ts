@@ -52,6 +52,7 @@ export class SkillTreePage {
   private animationFrameId: number | null = null;
   private hoveredSkill: SkillNode | null = null;
   private clickedNodes: Map<string, number> = new Map(); // skillId -> timestamp
+  private lastHoveredSkillId: string | null = null; // Track last hovered skill to prevent spam
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -107,6 +108,20 @@ export class SkillTreePage {
       'max_time_1': ['max_time_2'],
       'max_time_2': ['max_time_3'],
       'max_time_3': ['max_time_4'],
+      'special_atom_basics': ['unlock_time_atoms', 'unlock_supernova_atoms', 'unlock_black_hole_atoms'],
+      'unlock_time_atoms': ['time_atom_chance_1', 'time_atom_value_1'],
+      'time_atom_chance_1': ['ultimate_fission'],
+      'time_atom_value_1': ['time_atom_coins_1'],
+      'time_atom_coins_1': ['ultimate_fission'],
+      'unlock_supernova_atoms': ['supernova_atom_chance_1', 'supernova_atom_neutrons_1'],
+      'supernova_atom_chance_1': ['ultimate_fission'],
+      'supernova_atom_neutrons_1': ['supernova_atom_coins_1'],
+      'supernova_atom_coins_1': ['ultimate_fission'],
+      'unlock_black_hole_atoms': ['black_hole_atom_chance_1', 'black_hole_pull_radius_1'],
+      'black_hole_atom_chance_1': ['ultimate_fission'],
+      'black_hole_pull_radius_1': ['black_hole_atom_coins_1'],
+      'black_hole_atom_coins_1': ['black_hole_spawn_atoms_1'],
+      'black_hole_spawn_atoms_1': ['ultimate_fission'],
     };
 
     // Apply connections
@@ -879,11 +894,18 @@ export class SkillTreePage {
     this.hoveredSkill = skill;
     
     if (skill) {
+      // Play hover sound only when entering a new skill node
+      if (this.lastHoveredSkillId !== skill.id) {
+        audioManager.playSFX(AudioType.SKILLTREE_HOVER);
+        this.lastHoveredSkillId = skill.id;
+      }
+      
       this.showTooltip(skill, e.clientX, e.clientY);
       if (this.canvas) {
         this.canvas.style.cursor = 'pointer';
       }
     } else {
+      this.lastHoveredSkillId = null;
       this.hideTooltip();
       if (this.canvas) {
         this.canvas.style.cursor = this.isDragging ? 'grabbing' : 'grab';
@@ -1360,7 +1382,7 @@ export class SkillTreePage {
         coinsDisplay.textContent = gameState.getState().coins.toString();
       }
 
-      audioManager.playSFX(AudioType.SFX_UPGRADE);
+      audioManager.playSFX(AudioType.SKILLTREE_PURCHASE);
       gameState.saveGame();
       
       console.log(`[SkillTree] Purchased ${skillId} - New effective level: ${this.getEffectiveLevel(skillId)}, Applied to game state`);

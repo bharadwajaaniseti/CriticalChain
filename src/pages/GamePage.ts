@@ -186,34 +186,142 @@ export class GamePage {
     const sfxVolume = audioManager.getSFXVolume();
     const musicVolume = audioManager.getMusicVolume();
     
+    // Get individual volumes for each sound
+    const volumeClick = audioManager.getVolume(AudioType.SFX_CLICK);
+    const volumeReaction = audioManager.getVolume(AudioType.SFX_REACTION);
+    const volumeUpgrade = audioManager.getVolume(AudioType.SFX_UPGRADE);
+    const volumeAtomBreak = audioManager.getVolume(AudioType.SFX_ATOM_BREAK);
+    const volumeHomeUI = audioManager.getVolume(AudioType.HOME_UI_SELECT);
+    const volumeSkillPurchase = audioManager.getVolume(AudioType.SKILLTREE_PURCHASE);
+    const volumeSkillHover = audioManager.getVolume(AudioType.SKILLTREE_HOVER);
+    const volumeMusicIdle = audioManager.getVolume(AudioType.MUSIC_IDLE);
+    const volumeMusicReaction = audioManager.getVolume(AudioType.MUSIC_REACTION);
+    const volumeHomeBG = audioManager.getVolume(AudioType.HOME_MUSIC_BG);
+    
     // Create pause overlay
     const overlay = document.createElement('div');
     overlay.className = 'settings-overlay';
     overlay.innerHTML = `
-      <div class="settings-panel">
+      <div class="settings-panel settings-panel-wide">
         <button class="close-btn" id="resume-game">✕</button>
         <h2>⏸️ Game Paused</h2>
         <div class="settings-content">
           <div class="setting-section">
-            <h3>Audio</h3>
-            <div class="volume-control">
-              <label class="volume-label">
-                <span class="volume-icon">🔊</span>
-                <span>Sound Effects Volume</span>
-              </label>
-              <div class="volume-slider-container">
-                <input type="range" id="sfx-volume-pause" class="volume-slider" min="0" max="100" value="${sfxVolume * 100}">
-                <span class="volume-value" id="sfx-value-pause">${Math.round(sfxVolume * 100)}%</span>
+            <h3>🔊 Sound Effects Volume</h3>
+            <div class="volume-grid">
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">�️</span>
+                  <span>UI Click</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-click-pause" class="volume-slider" min="0" max="100" value="${volumeClick * 100}" data-type="${AudioType.SFX_CLICK}">
+                  <span class="volume-value" id="val-click-pause">${Math.round(volumeClick * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">⚛️</span>
+                  <span>Reaction Trigger</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-reaction-pause" class="volume-slider" min="0" max="100" value="${volumeReaction * 100}" data-type="${AudioType.SFX_REACTION}">
+                  <span class="volume-value" id="val-reaction-pause">${Math.round(volumeReaction * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">⬆️</span>
+                  <span>Upgrade Unlock</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-upgrade-pause" class="volume-slider" min="0" max="100" value="${volumeUpgrade * 100}" data-type="${AudioType.SFX_UPGRADE}">
+                  <span class="volume-value" id="val-upgrade-pause">${Math.round(volumeUpgrade * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">💥</span>
+                  <span>Atom Break</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-atom-break-pause" class="volume-slider" min="0" max="100" value="${volumeAtomBreak * 100}" data-type="${AudioType.SFX_ATOM_BREAK}">
+                  <span class="volume-value" id="val-atom-break-pause">${Math.round(volumeAtomBreak * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">�</span>
+                  <span>Home UI Select</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-home-ui-pause" class="volume-slider" min="0" max="100" value="${volumeHomeUI * 100}" data-type="${AudioType.HOME_UI_SELECT}">
+                  <span class="volume-value" id="val-home-ui-pause">${Math.round(volumeHomeUI * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">💰</span>
+                  <span>Skill Purchase</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-skill-purchase-pause" class="volume-slider" min="0" max="100" value="${volumeSkillPurchase * 100}" data-type="${AudioType.SKILLTREE_PURCHASE}">
+                  <span class="volume-value" id="val-skill-purchase-pause">${Math.round(volumeSkillPurchase * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">👆</span>
+                  <span>Skill Hover</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-skill-hover-pause" class="volume-slider" min="0" max="100" value="${volumeSkillHover * 100}" data-type="${AudioType.SKILLTREE_HOVER}">
+                  <span class="volume-value" id="val-skill-hover-pause">${Math.round(volumeSkillHover * 100)}%</span>
+                </div>
               </div>
             </div>
-            <div class="volume-control">
-              <label class="volume-label">
-                <span class="volume-icon">🎵</span>
-                <span>Music Volume</span>
-              </label>
-              <div class="volume-slider-container">
-                <input type="range" id="music-volume-pause" class="volume-slider" min="0" max="100" value="${musicVolume * 100}">
-                <span class="volume-value" id="music-value-pause">${Math.round(musicVolume * 100)}%</span>
+          </div>
+          
+          <div class="setting-section">
+            <h3>🎵 Music Volume</h3>
+            <div class="volume-grid">
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">🏠</span>
+                  <span>Home Background</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-home-bg-pause" class="volume-slider" min="0" max="100" value="${volumeHomeBG * 100}" data-type="${AudioType.HOME_MUSIC_BG}">
+                  <span class="volume-value" id="val-home-bg-pause">${Math.round(volumeHomeBG * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">🎮</span>
+                  <span>Idle Music</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-music-idle-pause" class="volume-slider" min="0" max="100" value="${volumeMusicIdle * 100}" data-type="${AudioType.MUSIC_IDLE}">
+                  <span class="volume-value" id="val-music-idle-pause">${Math.round(volumeMusicIdle * 100)}%</span>
+                </div>
+              </div>
+              
+              <div class="volume-control">
+                <label class="volume-label">
+                  <span class="volume-icon">⚡</span>
+                  <span>Reaction Music</span>
+                </label>
+                <div class="volume-slider-container">
+                  <input type="range" id="vol-music-reaction-pause" class="volume-slider" min="0" max="100" value="${volumeMusicReaction * 100}" data-type="${AudioType.MUSIC_REACTION}">
+                  <span class="volume-value" id="val-music-reaction-pause">${Math.round(volumeMusicReaction * 100)}%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -223,24 +331,29 @@ export class GamePage {
 
     this.container.appendChild(overlay);
 
-    // Add event listeners
-    const sfxSlider = document.getElementById('sfx-volume-pause') as HTMLInputElement;
-    const musicSlider = document.getElementById('music-volume-pause') as HTMLInputElement;
-    const sfxValueDisplay = document.getElementById('sfx-value-pause');
-    const musicValueDisplay = document.getElementById('music-value-pause');
-
-    sfxSlider?.addEventListener('input', (e) => {
-      const value = parseInt((e.target as HTMLInputElement).value) / 100;
-      audioManager.setSFXVolume(value);
-      if (sfxValueDisplay) sfxValueDisplay.textContent = `${Math.round(value * 100)}%`;
-      // Play a test sound
-      audioManager.playSFX(AudioType.SFX_CLICK);
-    });
-
-    musicSlider?.addEventListener('input', (e) => {
-      const value = parseInt((e.target as HTMLInputElement).value) / 100;
-      audioManager.setMusicVolume(value);
-      if (musicValueDisplay) musicValueDisplay.textContent = `${Math.round(value * 100)}%`;
+    // Add event listeners for all volume sliders
+    const volumeSliders = overlay.querySelectorAll('.volume-slider');
+    volumeSliders.forEach((slider) => {
+      const inputSlider = slider as HTMLInputElement;
+      const audioType = inputSlider.getAttribute('data-type') as AudioType;
+      const sliderId = inputSlider.id;
+      const valueDisplayId = sliderId.replace('vol-', 'val-');
+      const valueDisplay = document.getElementById(valueDisplayId);
+      
+      inputSlider.addEventListener('input', (e) => {
+        const value = parseInt((e.target as HTMLInputElement).value) / 100;
+        audioManager.setVolume(audioType, value);
+        if (valueDisplay) valueDisplay.textContent = `${Math.round(value * 100)}%`;
+        
+        // Play a preview sound for SFX types
+        if (audioType !== AudioType.HOME_MUSIC_BG && 
+            audioType !== AudioType.MUSIC_IDLE && 
+            audioType !== AudioType.MUSIC_REACTION) {
+          audioManager.preloadAudio(audioType).then(() => {
+            audioManager.playSFX(audioType);
+          });
+        }
+      });
     });
 
     const resumeGameHandler = () => {
