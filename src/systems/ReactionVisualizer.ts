@@ -30,6 +30,7 @@ export interface Atom {
   isFissile: boolean;  // false = non-fissile (black material)
   lifetime: number;  // Frames alive (for decay)
   maxLifetime: number;  // When to decay (based on skill tree)
+  specialType?: 'time' | 'supernova' | 'blackhole';  // Special atom types
 }
 
 export interface FloatingText {
@@ -295,8 +296,32 @@ class ReactionVisualizer {
     
     const value = healthLevel;
     
+    // Check for special atom types (with fission mastery multiplier)
+    const fissionMult = state.upgrades.fissionMastery ? 2 : 1;
+    let specialType: 'time' | 'supernova' | 'blackhole' | undefined;
+    let atomColor = this.getAtomColor(healthLevel);
+    
+    const specialRoll = Math.random() * 100;
+    
+    // Check Time Atoms (highest priority)
+    if (state.upgrades.timeAtomsUnlocked && specialRoll < (state.upgrades.timeAtomChance * fissionMult)) {
+      specialType = 'time';
+      atomColor = '#00FFFF'; // Cyan
+    }
+    // Check Supernova Atoms
+    else if (state.upgrades.supernovaUnlocked && specialRoll < (state.upgrades.timeAtomChance + state.upgrades.supernovaChance) * fissionMult) {
+      specialType = 'supernova';
+      atomColor = '#FFFFFF'; // White/Bright
+    }
+    // Check Black Hole Atoms (lowest spawn rate)
+    else if (state.upgrades.blackHoleUnlocked && specialRoll < (state.upgrades.timeAtomChance + state.upgrades.supernovaChance + state.upgrades.blackHoleChance) * fissionMult) {
+      specialType = 'blackhole';
+      atomColor = '#8000FF'; // Purple
+    }
+    
     // Determine if fissile (at rank 1+, some atoms are non-fissile)
-    const isFissile = rank === 0 || Math.random() > 0.15;
+    // Special atoms are always fissile
+    const isFissile = specialType ? true : (rank === 0 || Math.random() > 0.15);
     
     // Random position at edge of screen or in the middle for initial spawns
     const side = Math.floor(Math.random() * 4);
@@ -333,6 +358,9 @@ class ReactionVisualizer {
     // Base lifetime: 10 seconds (600 frames at 60fps), multiplied by upgrade
     const atomLifetime = 600 * state.upgrades.atomLifetime;
     
+    // Override color for non-fissile
+    if (!isFissile) atomColor = '#000000';
+    
     this.atoms.push({
       x,
       y,
@@ -342,10 +370,11 @@ class ReactionVisualizer {
       health,
       maxHealth: health,
       value,
-      color: isFissile ? this.getAtomColor(healthLevel) : '#000000',
+      color: atomColor,
       isFissile,
       lifetime: 0,
       maxLifetime: atomLifetime,
+      specialType,
     });
     
     console.log(`[VISUALIZER] Spawned atom at (${x.toFixed(0)}, ${y.toFixed(0)}), radius: ${radius}, health: ${health}, total atoms: ${this.atoms.length}`);
@@ -583,31 +612,75 @@ class ReactionVisualizer {
           this.lastChainResetTime = Date.now();
 
           if (atom.health <= 0) {
-            // Atom destroyed - award coins and emit neutrons
-            gameState.awardCoins(atom.value);
-            this.showFloatingText(`+${atom.value} x${gameState.getState().currentChain}`, atom.x, atom.y, '#00FF66');
-            
-            // Play atom break sound
-            audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
-            
-            // Emit neutrons based on upgrade
-            const currentState = gameState.getState();
-            const neutronCount = currentState.upgrades.neutronCountAtom;
-            const baseSpeed = 1.0 * currentState.upgrades.neutronSpeed;
-            const neutronSize = 5 * currentState.upgrades.neutronSize;
-            
-            for (let k = 0; k < neutronCount; k++) {
-              const angle = (Math.PI * 2 * k) / neutronCount + Math.random() * 0.3;
+            // SPECIAL ATOM EFFECTS
+            if (atom.specialType === 'time') {
+              // Time atom - add time to the timer
+              const state = gameState.getState();
+              const fissionMult = state.upgrades.fissionMastery ? 1.5 : 1;
+              const timeBonus = (0.5 + state.upgrades.timeAtomBonus) * fissionMult;
+              gameState.updateTime(-timeBonus); // Negative to add time
+              this.showFloatingText(`+${timeBonus.toFixed(1)}s ⏱`, atom.x, atom.y, '#00FFFF');
+              console.log(`[VISUALIZER] Time atom broken! Added ${timeBonus}s`);
+            } else if (atom.specialType === 'supernova') {
+              // Supernova atom - release MANY neutrons
+              const state = gameState.getState();
+              const fissionMult = state.upgrades.fissionMastery ? 1.5 : 1;
+              const supernovaNeutrons = Math.floor((10 + state.upgrades.supernovaNeutrons) * fissionMult);
+              const baseSpeed = 1.0 * state.upgrades.neutronSpeed;
+              const neutronSize = 5 * state.upgrades.neutronSize;
               
-              this.neutrons.push({
-                x: atom.x,
-                y: atom.y,
-                vx: Math.cos(angle) * baseSpeed,
-                vy: Math.sin(angle) * baseSpeed,
-                size: neutronSize,
-                lifetime: 0,
-                pierceRemaining: currentState.upgrades.pierce,
-              });
+              for (let k = 0; k < supernovaNeutrons; k++) {
+                const angle = (Math.PI * 2 * k) / supernovaNeutrons + Math.random() * 0.2;
+                this.neutrons.push({
+                  x: atom.x,
+                  y: atom.y,
+                  vx: Math.cos(angle) * baseSpeed * 1.5,
+                  vy: Math.sin(angle) * baseSpeed * 1.5,
+                  size: neutronSize,
+                  lifetime: 0,
+                  pierceRemaining: state.upgrades.pierce,
+                });
+              }
+              this.showFloatingText(`💥 ${supernovaNeutrons} neutrons!`, atom.x, atom.y, '#FFFF00');
+              console.log(`[VISUALIZER] Supernova atom broken! Released ${supernovaNeutrons} neutrons`);
+            } else if (atom.specialType === 'blackhole') {
+              // Black hole atom - it already pulls neutrons, just log
+              this.showFloatingText(`🌀 Black Hole!`, atom.x, atom.y, '#8000FF');
+              console.log(`[VISUALIZER] Black hole atom destroyed!`);
+            }
+            
+            // Normal atom destruction
+            if (!atom.specialType) {
+              // Atom destroyed - award coins and emit neutrons
+              gameState.awardCoins(atom.value);
+              this.showFloatingText(`+${atom.value} x${gameState.getState().currentChain}`, atom.x, atom.y, '#00FF66');
+              
+              // Play atom break sound
+              audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+              
+              // Emit neutrons based on upgrade
+              const currentState = gameState.getState();
+              const neutronCount = currentState.upgrades.neutronCountAtom;
+              const baseSpeed = 1.0 * currentState.upgrades.neutronSpeed;
+              const neutronSize = 5 * currentState.upgrades.neutronSize;
+              
+              for (let k = 0; k < neutronCount; k++) {
+                const angle = (Math.PI * 2 * k) / neutronCount + Math.random() * 0.3;
+                
+                this.neutrons.push({
+                  x: atom.x,
+                  y: atom.y,
+                  vx: Math.cos(angle) * baseSpeed,
+                  vy: Math.sin(angle) * baseSpeed,
+                  size: neutronSize,
+                  lifetime: 0,
+                  pierceRemaining: currentState.upgrades.pierce,
+                });
+              }
+            } else {
+              // Special atoms still award coins
+              gameState.awardCoins(atom.value * 2); // 2x coins for special atoms
+              audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
             }
 
             this.atoms.splice(j, 1);
@@ -659,6 +732,112 @@ class ReactionVisualizer {
     
     // Calculate lifetime percentage
     const lifetimePercent = atom.lifetime / atom.maxLifetime;
+    
+    // SPECIAL ATOM TYPES - Draw with unique visual effects
+    if (atom.specialType === 'time') {
+      // TIME ATOM - Cyan with clock icon
+      const pulsePhase = (Date.now() % 1000) / 1000;
+      const pulseSize = Math.sin(pulsePhase * Math.PI * 2) * 5;
+      
+      // Outer glow
+      const glowGradient = ctx.createRadialGradient(atom.x, atom.y, 0, atom.x, atom.y, atom.radius + 15);
+      glowGradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+      glowGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 15 + pulseSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Main body
+      ctx.fillStyle = '#00FFFF';
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Clock icon
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `${atom.radius * 1.2}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⏱', atom.x, atom.y);
+      
+      ctx.globalAlpha = 1;
+      return;
+    }
+    
+    if (atom.specialType === 'supernova') {
+      // SUPERNOVA ATOM - Bright white with star icon
+      const pulsePhase = (Date.now() % 800) / 800;
+      const pulseSize = Math.sin(pulsePhase * Math.PI * 2) * 8;
+      
+      // Outer energy burst
+      const burstGradient = ctx.createRadialGradient(atom.x, atom.y, 0, atom.x, atom.y, atom.radius + 20);
+      burstGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      burstGradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.6)');
+      burstGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+      ctx.fillStyle = burstGradient;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 20 + pulseSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Main body
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = '#FFFF00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Star icon
+      ctx.fillStyle = '#FF0000';
+      ctx.font = `${atom.radius * 1.3}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💥', atom.x, atom.y);
+      
+      ctx.globalAlpha = 1;
+      return;
+    }
+    
+    if (atom.specialType === 'blackhole') {
+      // BLACK HOLE ATOM - Purple with spiral icon
+      const pulsePhase = (Date.now() % 1500) / 1500;
+      const pulseSize = Math.sin(pulsePhase * Math.PI * 2) * 10;
+      
+      // Gravity rings
+      ctx.strokeStyle = `rgba(128, 0, 255, ${0.4 * (1 - pulsePhase)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 40 + pulseSize, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.strokeStyle = `rgba(128, 0, 255, ${0.6 * (1 - pulsePhase * 0.5)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 20 + pulseSize * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Main body with gradient
+      const gradient = ctx.createRadialGradient(atom.x, atom.y, 0, atom.x, atom.y, atom.radius);
+      gradient.addColorStop(0, '#1a0033');
+      gradient.addColorStop(0.7, '#4400AA');
+      gradient.addColorStop(1, '#8000FF');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Black hole icon
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `${atom.radius * 1.2}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🌀', atom.x, atom.y);
+      
+      ctx.globalAlpha = 1;
+      return;
+    }
     
     // Black hole special effects (non-fissile atoms)
     if (!atom.isFissile) {
