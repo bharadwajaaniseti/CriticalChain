@@ -353,7 +353,7 @@ dist/
 
 ---
 
-## ✨ HIGHLIGHTS
+##  HIGHLIGHTS
 
 ⭐ **Complete** - Not a template, a working game  
 ⭐ **Professional** - Production-ready code  

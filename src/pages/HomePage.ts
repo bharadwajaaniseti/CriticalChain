@@ -21,38 +21,65 @@ export class HomePage {
     
     this.container.innerHTML = `
       <div class="home-page">
-        <div class="home-hero">
+        <div class="home-header">
           <div class="meta-currency-display">
-            <span class="meta-icon">⭐</span>
+            <svg class="icon-radiation" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 12h.01"/>
+              <path d="M7.5 4.2c-.3-.5-.9-.7-1.3-.4C3.9 5.5 2.3 8.1 2 11c-.1.5.4 1 1 1h5c0-1.5.8-2.8 2-3.4-1.1-1.9-2-3.5-2.5-4.4z"/>
+              <path d="M21 12c.6 0 1-.4 1-1-.3-2.9-1.8-5.5-4.1-7.1-.4-.3-1.1-.2-1.3.3-.6.9-1.5 2.5-2.6 4.3 1.2.7 2 2 2 3.5h5z"/>
+              <path d="M7.5 19.8c-.3.5-.1 1.1.4 1.3 2.6 1.2 5.6 1.2 8.2 0 .5-.2.7-.8.4-1.3-.5-.9-1.4-2.5-2.5-4.3-1.2.7-2.8.7-4 0-1.1 1.8-2 3.4-2.5 4.3z"/>
+            </svg>
             <span class="meta-amount">${state.metaCurrency}</span>
+            <span class="meta-label">Quantum Cores</span>
           </div>
-          
-          <div class="logo-container">
-            <div class="logo-orbit">
-              <div class="logo-icon">⚛️</div>
-            </div>
-          </div>
-          
-          <h1 class="home-title">Critical Chain</h1>
-          <p class="home-subtitle">Nuclear Chain Reaction Simulator</p>
         </div>
 
-        <div class="home-menu">
-          <button class="menu-button" id="play-btn">
-            <span>▶️ Play</span>
-          </button>
-          
-          <button class="menu-button" id="upgrades-btn">
-            <span>⬆️ Skills & Upgrades</span>
-          </button>
-          
-          <button class="menu-button" id="settings-btn">
-            <span>⚙️ Settings</span>
-          </button>
-          
-          <button class="menu-button" id="credits-btn">
-            <span>ℹ️ Credits</span>
-          </button>
+        <div class="home-content">
+          <div class="home-hero">
+            <h1 class="home-title">Critical Chain</h1>
+            <p class="home-subtitle">Nuclear Chain Reaction Simulator</p>
+          </div>
+
+          <div class="home-main">
+            <div class="home-menu">
+              <button class="menu-button primary" id="play-btn">
+                <span class="button-icon">▶️</span>
+                <span class="button-text">Play</span>
+              </button>
+              
+              <button class="menu-button" id="upgrades-btn">
+                <span class="button-icon">⬆️</span>
+                <span class="button-text">Skills & Upgrades</span>
+              </button>
+              
+              <button class="menu-button" id="settings-btn">
+                <span class="button-icon">⚙️</span>
+                <span class="button-text">Settings</span>
+              </button>
+              
+              <button class="menu-button" id="credits-btn">
+                <span class="button-icon">ℹ️</span>
+                <span class="button-text">Credits</span>
+              </button>
+            </div>
+
+            <div class="home-stats">
+              <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-info">
+                  <div class="stat-label">Highest Rank</div>
+                  <div class="stat-value">${state.highestRank}</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">💥</div>
+                <div class="stat-info">
+                  <div class="stat-label">Atoms Destroyed</div>
+                  <div class="stat-value">${state.totalAtomsDestroyed.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="home-footer">
@@ -239,8 +266,117 @@ export class HomePage {
   }
 
   private showCredits(): void {
-    // TODO: Implement credits modal
-    alert('Credits:\nGame Design: Based on Criticality by mechabit\nDevelopment: Critical Chain Team');
+    // Create credits overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'credits-overlay';
+    overlay.innerHTML = `
+      <div class="credits-panel">
+        <button class="close-btn" id="close-credits">✕</button>
+        
+        <div class="credits-particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+        </div>
+        
+        <div class="credits-header">
+          <div class="credits-icon-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="credits-icon">
+              <path d="M12 12h.01"/>
+              <path d="M7.5 4.2c-.3-.5-.9-.7-1.3-.4C3.9 5.5 2.3 8.1 2 11c-.1.5.4 1 1 1h5c0-1.5.8-2.8 2-3.4-1.1-1.9-2-3.5-2.5-4.4z"/>
+              <path d="M21 12c.6 0 1-.4 1-1-.3-2.9-1.8-5.5-4.1-7.1-.4-.3-1.1-.2-1.3.3-.6.9-1.5 2.5-2.6 4.3 1.2.7 2 2 2 3.5h5z"/>
+              <path d="M7.5 19.8c-.3.5-.1 1.1.4 1.3 2.6 1.2 5.6 1.2 8.2 0 .5-.2.7-.8.4-1.3-.5-.9-1.4-2.5-2.5-4.3-1.2.7-2.8.7-4 0-1.1 1.8-2 3.4-2.5 4.3z"/>
+            </svg>
+            <div class="icon-glow"></div>
+          </div>
+          <h2 class="credits-title">Critical Chain</h2>
+          <p class="credits-subtitle">⚡ Nuclear Chain Reaction Simulator ⚡</p>
+        </div>
+        
+        <div class="credits-content">
+          <div class="credits-row">
+            <div class="credits-section slide-in" style="animation-delay: 0.1s">
+              <div class="section-icon">🎮</div>
+              <div class="section-content">
+                <h3>Game Design</h3>
+                <p>Critical Chain Team</p>
+              </div>
+            </div>
+            
+            <div class="credits-section slide-in" style="animation-delay: 0.2s">
+              <div class="section-icon music-icon" id="music-sound-icon">🎵</div>
+              <div class="section-content">
+                <h3>Sound Design</h3>
+                <p>Audio by <a href="https://pixabay.com/users/virtual_vibes-51361309/" class="credits-link">Dilip</a> from  <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=379990/" class="credits-link">Pixabay</a></p>
+                <p class="sound-hint">💡 Click the icon to hear!</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="credits-section slide-in full-width" style="animation-delay: 0.3s">
+            <div class="section-icon">🔧</div>
+            <div class="section-content">
+              <h3>Built With</h3>
+              <div class="tech-list">
+                <span class="tech-badge"> TypeScript</span>
+                <span class="tech-badge"> HTML5 Canvas</span>
+                <span class="tech-badge"> Web Audio API</span>
+                <span class="tech-badge"> Vite</span>
+                <span class="tech-badge"> Lucide Icons</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="credits-section slide-in full-width" style="animation-delay: 0.4s">
+            <div class="section-icon">💝</div>
+            <div class="section-content">
+              <h3>Special Thanks</h3>
+              <p>To all players and testers who helped shape this game! Your feedback made this possible. 🙏</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="credits-footer">
+          <div class="footer-divider"></div>
+          <p class="version-badge"> Version 1.0.0 </p>
+          <p class="credits-copyright">Made with 💚 by Critical Chain Team © 2025</p>
+        </div>
+      </div>
+    `;
+
+    this.container.appendChild(overlay);
+
+    const closeCredits = () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      document.removeEventListener('keydown', handleEscape);
+      overlay.remove();
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeCredits();
+      }
+    };
+
+    document.getElementById('close-credits')?.addEventListener('click', closeCredits);
+
+    // Add click handler for music icon to play thud sound
+    const musicIcon = document.getElementById('music-sound-icon');
+    musicIcon?.addEventListener('click', () => {
+      audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+    });
+
+    // Close on background click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeCredits();
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', handleEscape);
   }
 
   destroy(): void {

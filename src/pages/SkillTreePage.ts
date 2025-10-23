@@ -132,7 +132,7 @@ export class SkillTreePage {
   private getSkillIcon(id: string): string {
     if (id === 'root') return '⚛️';
     if (id.includes('branch_initiator')) return '🔺';
-    if (id.includes('branch_photon')) return '✨';
+    if (id.includes('branch_photon')) return '⭐';
     if (id.includes('branch_reaction')) return '🔗';
     if (id.includes('branch_economy')) return '💰';
     if (id.includes('click')) return '👆';

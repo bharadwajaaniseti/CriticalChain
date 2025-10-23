@@ -56,7 +56,7 @@ CriticalChain/
 6. **PrestigeSystem** - Hard reset with permanent bonuses
 7. **GameUI** - User interface and interactions
 
-### ✨ Features Included
+###  Features Included
 
 - ✅ Chain reaction mechanics with spreading nodes
 - ✅ 7-node skill tree with progressive unlocking

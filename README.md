@@ -52,7 +52,7 @@ A nuclear chain reaction idle/incremental game. Click to trigger atomic reaction
 
 - **🌈 Gradient Theme**: Indigo-teal gradient background├── src/
 
-- **✨ Smooth Animations**: Particle effects, glowing nodes, hover states│   ├── index.ts            # Main game initialization
+- ** Smooth Animations**: Particle effects, glowing nodes, hover states│   ├── index.ts            # Main game initialization
 
 - **📱 Responsive Design**: Adapts to different screen sizes│   ├── styles.css          # Global styles
 

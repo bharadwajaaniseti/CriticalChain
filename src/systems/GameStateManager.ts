@@ -402,7 +402,7 @@ class GameStateManager {
    * Start a fresh run - reset coins, rank, and skill tree but keep quantum cores and prestige upgrades
    */
   startFreshRun(): void {
-    // Reset run-specific stats only (keep quantum cores, prestige upgrades, and base upgrades)
+    // Reset run-specific stats only (keep quantum cores, prestige upgrades, totalAtomsDestroyed, and highestRank)
     this.state.coins = 0;
     this.state.shots = 0;
     this.state.time = 0;
@@ -415,7 +415,7 @@ class GameStateManager {
     this.state.timeRemaining = 10;
     this.state.maxTime = 10;
     this.state.gameActive = false;
-    this.state.totalAtomsDestroyed = 0;
+    // Don't reset totalAtomsDestroyed - it's a lifetime stat
     
     // Reset base upgrades (skill tree) but keep prestige upgrades
     this.state.upgrades = {
@@ -457,10 +457,11 @@ class GameStateManager {
     this.state.metaCurrency += metaEarned;
     this.state.quantumCores += quantumEarned;
     
-    // Reset run-specific stats (keep metaCurrency, quantumCores, and highestRank)
+    // Reset run-specific stats (keep metaCurrency, quantumCores, highestRank, and totalAtomsDestroyed)
     const preservedMetaCurrency = this.state.metaCurrency;
     const preservedQuantumCores = this.state.quantumCores;
     const preservedHighestRank = this.state.highestRank;
+    const preservedTotalAtomsDestroyed = this.state.totalAtomsDestroyed;
     
     this.state.coins = 0;
     this.state.shots = 0;
@@ -474,12 +475,12 @@ class GameStateManager {
     this.state.timeRemaining = 10;
     this.state.maxTime = 10;
     this.state.gameActive = false;
-    this.state.totalAtomsDestroyed = 0;
     
     // Restore persistent stats
     this.state.metaCurrency = preservedMetaCurrency;
     this.state.quantumCores = preservedQuantumCores;
     this.state.highestRank = preservedHighestRank;
+    this.state.totalAtomsDestroyed = preservedTotalAtomsDestroyed;
     
     this.saveGame();
     console.log(`[GameState] Run reset - Earned ${metaEarned} meta currency (total: ${this.state.metaCurrency}) and ${quantumEarned} quantum cores (total: ${this.state.quantumCores})`);
