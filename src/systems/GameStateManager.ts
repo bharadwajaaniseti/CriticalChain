@@ -79,14 +79,18 @@ export interface GameState {
     timeAtomsUnlocked: number;         // 1 = time atoms can spawn
     timeAtomChance: number;            // % chance for time atoms
     timeAtomBonus: number;             // Bonus time granted by time atoms
+    timeAtomCoins: number;             // Bonus coins when breaking time atoms
     
     supernovaUnlocked: number;         // 1 = supernova atoms can spawn
     supernovaChance: number;           // % chance for supernova atoms
     supernovaNeutrons: number;         // Bonus neutrons from supernova atoms
+    supernovaCoins: number;            // Bonus coins when breaking supernova atoms
     
     blackHoleUnlocked: number;         // 1 = black hole atoms can spawn (fissile ones that explode)
     blackHoleChance: number;           // % chance for black hole atoms
     blackHolePullRadius: number;       // Multiplier for black hole pull radius
+    blackHoleCoins: number;            // Bonus coins when breaking black hole atoms
+    blackHoleSpawnAtoms: number;       // Number of atoms spawned when black hole is destroyed
     
     fissionMastery: number;            // 1 = special atoms 2x spawn and 50% more effective
   };
@@ -172,14 +176,18 @@ class GameStateManager {
           timeAtomsUnlocked: 0,
           timeAtomChance: 0,
           timeAtomBonus: 0.5,
+          timeAtomCoins: 0,
           
           supernovaUnlocked: 0,
           supernovaChance: 0,
           supernovaNeutrons: 10,
+          supernovaCoins: 0,
           
           blackHoleUnlocked: 0,
           blackHoleChance: 0,
           blackHolePullRadius: 1,
+          blackHoleCoins: 0,
+          blackHoleSpawnAtoms: 0,
           
           fissionMastery: 0,
         };
@@ -211,12 +219,16 @@ class GameStateManager {
       if (saved.upgrades.timeAtomsUnlocked === undefined) saved.upgrades.timeAtomsUnlocked = 0;
       if (saved.upgrades.timeAtomChance === undefined) saved.upgrades.timeAtomChance = 0;
       if (saved.upgrades.timeAtomBonus === undefined) saved.upgrades.timeAtomBonus = 0.5;
+      if (saved.upgrades.timeAtomCoins === undefined) saved.upgrades.timeAtomCoins = 0;
       if (saved.upgrades.supernovaUnlocked === undefined) saved.upgrades.supernovaUnlocked = 0;
       if (saved.upgrades.supernovaChance === undefined) saved.upgrades.supernovaChance = 0;
       if (saved.upgrades.supernovaNeutrons === undefined) saved.upgrades.supernovaNeutrons = 10;
+      if (saved.upgrades.supernovaCoins === undefined) saved.upgrades.supernovaCoins = 0;
       if (saved.upgrades.blackHoleUnlocked === undefined) saved.upgrades.blackHoleUnlocked = 0;
       if (saved.upgrades.blackHoleChance === undefined) saved.upgrades.blackHoleChance = 0;
       if (saved.upgrades.blackHolePullRadius === undefined) saved.upgrades.blackHolePullRadius = 1;
+      if (saved.upgrades.blackHoleCoins === undefined) saved.upgrades.blackHoleCoins = 0;
+      if (saved.upgrades.blackHoleSpawnAtoms === undefined) saved.upgrades.blackHoleSpawnAtoms = 0;
       if (saved.upgrades.fissionMastery === undefined) saved.upgrades.fissionMastery = 0;
       
       // Ensure new click system fields exist (backward compatibility)
@@ -295,14 +307,18 @@ class GameStateManager {
         timeAtomsUnlocked: 0,
         timeAtomChance: 0,
         timeAtomBonus: 0.5,
+        timeAtomCoins: 0,
         
         supernovaUnlocked: 0,
         supernovaChance: 0,
         supernovaNeutrons: 10,
+        supernovaCoins: 0,
         
         blackHoleUnlocked: 0,
         blackHoleChance: 0,
         blackHolePullRadius: 1,
+        blackHoleCoins: 0,
+        blackHoleSpawnAtoms: 0,
         
         fissionMastery: 0,
       },
@@ -674,14 +690,18 @@ class GameStateManager {
       timeAtomsUnlocked: 0,
       timeAtomChance: 0,
       timeAtomBonus: 0.5,
+      timeAtomCoins: 0,
       
       supernovaUnlocked: 0,
       supernovaChance: 0,
       supernovaNeutrons: 10,
+      supernovaCoins: 0,
       
       blackHoleUnlocked: 0,
       blackHoleChance: 0,
       blackHolePullRadius: 1,
+      blackHoleCoins: 0,
+      blackHoleSpawnAtoms: 0,
       
       fissionMastery: 0,
     };
@@ -843,14 +863,18 @@ class GameStateManager {
         timeAtomsUnlocked: 0,
         timeAtomChance: 0,
         timeAtomBonus: 0.5,
+        timeAtomCoins: 0,
         
         supernovaUnlocked: 0,
         supernovaChance: 0,
         supernovaNeutrons: 10,
+        supernovaCoins: 0,
         
         blackHoleUnlocked: 0,
         blackHoleChance: 0,
         blackHolePullRadius: 1,
+        blackHoleCoins: 0,
+        blackHoleSpawnAtoms: 0,
         
         fissionMastery: 0,
       },

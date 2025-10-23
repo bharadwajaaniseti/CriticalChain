@@ -1247,8 +1247,13 @@ export class SkillTreePage {
         break;
 
       case 'time_atom_value_1':
-        const timeBonus = 0.5 + totalLevel * 0.25; // 0.5s base + 0.25s per level
+        const timeBonus = 0.5 + totalLevel * 2; // 0.5s base + 2s per level
         gameState.updateUpgrade('timeAtomBonus', timeBonus);
+        break;
+
+      case 'time_atom_coins_1':
+        const timeCoins = totalLevel * 5; // 5 coins per level
+        gameState.updateUpgrade('timeAtomCoins', timeCoins);
         break;
 
       // Supernova Atoms
@@ -1268,6 +1273,11 @@ export class SkillTreePage {
         gameState.updateUpgrade('supernovaNeutrons', supernovaNeutrons);
         break;
 
+      case 'supernova_atom_coins_1':
+        const supernovaCoins = totalLevel * 25; // 25 coins per level
+        gameState.updateUpgrade('supernovaCoins', supernovaCoins);
+        break;
+
       // Black Hole Atoms (fissile explosive ones)
       case 'unlock_black_hole_atoms':
         if (totalLevel > 0) {
@@ -1283,6 +1293,16 @@ export class SkillTreePage {
       case 'black_hole_pull_radius_1':
         const blackHoleRadius = 1 + totalLevel * 0.1; // +10% per level
         gameState.updateUpgrade('blackHolePullRadius', blackHoleRadius);
+        break;
+
+      case 'black_hole_atom_coins_1':
+        const blackHoleCoins = totalLevel * 15; // 15 coins per level
+        gameState.updateUpgrade('blackHoleCoins', blackHoleCoins);
+        break;
+
+      case 'black_hole_spawn_atoms_1':
+        const spawnAtoms = totalLevel; // 1 atom per level
+        gameState.updateUpgrade('blackHoleSpawnAtoms', spawnAtoms);
         break;
 
       // Ultimate Fission

@@ -602,12 +602,24 @@
   "time_atom_value_1": {
     "id": "time_atom_value_1",
     "name": "Time Atom Potency",
-    "description": "Time atoms grant an extra +0.25s (per level).",
+    "description": "Time atoms grant an extra +2s (per level).",
     "icon": "++",
     "currentLevel": 0,
-    "maxLevel": 3,
+    "maxLevel": 5,
     "baseCost": 1,
     "costMultiplier": 2.0,
+    "unlocked": false,
+    "connectedNodes": ["time_atom_coins_1"]
+  },
+  "time_atom_coins_1": {
+    "id": "time_atom_coins_1",
+    "name": "Time Atom Reward",
+    "description": "+5 coins when breaking time atoms (per level).",
+    "icon": "💰",
+    "currentLevel": 0,
+    "maxLevel": 5,
+    "baseCost": 1,
+    "costMultiplier": 1.6,
     "unlocked": false,
     "connectedNodes": ["ultimate_fission"]
   },
@@ -645,6 +657,18 @@
     "baseCost": 1,
     "costMultiplier": 2.0,
     "unlocked": false,
+    "connectedNodes": ["supernova_atom_coins_1"]
+  },
+  "supernova_atom_coins_1": {
+    "id": "supernova_atom_coins_1",
+    "name": "Supernova Reward",
+    "description": "+25 coins when breaking supernova atoms (per level).",
+    "icon": "💰",
+    "currentLevel": 0,
+    "maxLevel": 5,
+    "baseCost": 1,
+    "costMultiplier": 1.7,
+    "unlocked": false,
     "connectedNodes": ["ultimate_fission"]
   },
   "unlock_black_hole_atoms": {
@@ -680,6 +704,30 @@
     "maxLevel": 5,
     "baseCost": 1,
     "costMultiplier": 1.8,
+    "unlocked": false,
+    "connectedNodes": ["black_hole_atom_coins_1"]
+  },
+  "black_hole_atom_coins_1": {
+    "id": "black_hole_atom_coins_1",
+    "name": "Black Hole Reward",
+    "description": "+15 coins when breaking black hole atoms (per level).",
+    "icon": "💰",
+    "currentLevel": 0,
+    "maxLevel": 5,
+    "baseCost": 1,
+    "costMultiplier": 1.9,
+    "unlocked": false,
+    "connectedNodes": ["black_hole_spawn_atoms_1"]
+  },
+  "black_hole_spawn_atoms_1": {
+    "id": "black_hole_spawn_atoms_1",
+    "name": "Singularity Burst",
+    "description": "Spawn +1 atom when black hole is destroyed (per level).",
+    "icon": "⚛️",
+    "currentLevel": 0,
+    "maxLevel": 3,
+    "baseCost": 1,
+    "costMultiplier": 2.2,
     "unlocked": false,
     "connectedNodes": ["ultimate_fission"]
   },

@@ -404,6 +404,61 @@ class ReactionVisualizer {
   }
 
   /**
+   * Spawn a new atom near a specific point (for black hole destruction)
+   */
+  private spawnAtomNearPoint(x: number, y: number): void {
+    if (this.canvas.width === 0 || this.canvas.height === 0) {
+      return;
+    }
+
+    const state = gameState.getState();
+    const rank = state.rank;
+    
+    // Determine atom size based on rank
+    let healthLevel = 1;
+    if (rank >= 1) {
+      const rand = Math.random();
+      if (rand < 0.1 && rank >= 4) healthLevel = 4;
+      else if (rand < 0.3 && rank >= 2) healthLevel = 3;
+      else if (rand < 0.5 && rank >= 1) healthLevel = 2;
+    }
+
+    const health = Math.ceil(healthLevel * state.upgrades.atomHealth);
+    const baseRadius = 20;
+    const radius = (baseRadius + (healthLevel - 1) * 8) * state.upgrades.atomSize;
+    const value = healthLevel;
+    const atomColor = this.getAtomColor(healthLevel);
+    const atomLifetime = 600 * state.upgrades.atomLifetime;
+    
+    // Spawn near the specified point with random offset
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 50 + Math.random() * 100;
+    const spawnX = x + Math.cos(angle) * distance;
+    const spawnY = y + Math.sin(angle) * distance;
+    
+    // Random velocity (slow drift)
+    const speed = 0.3 * state.upgrades.atomSpeed;
+    const vAngle = Math.random() * Math.PI * 2;
+    
+    this.atoms.push({
+      x: spawnX,
+      y: spawnY,
+      vx: Math.cos(vAngle) * speed,
+      vy: Math.sin(vAngle) * speed,
+      radius,
+      health,
+      maxHealth: health,
+      value,
+      color: atomColor,
+      isFissile: true,
+      lifetime: 0,
+      maxLifetime: atomLifetime,
+    });
+    
+    console.log(`[VISUALIZER] Spawned atom near (${x.toFixed(0)}, ${y.toFixed(0)}) from black hole destruction`);
+  }
+
+  /**
    * Get atom color based on health level
    */
   private getAtomColor(healthLevel: number): string {
@@ -652,8 +707,15 @@ class ReactionVisualizer {
               const fissionMult = state.upgrades.fissionMastery ? 1.5 : 1;
               const timeBonus = (0.5 + state.upgrades.timeAtomBonus) * fissionMult;
               gameState.updateTime(-timeBonus); // Negative to add time
-              this.showFloatingText(`+${timeBonus.toFixed(1)}s ⏱`, atom.x, atom.y, '#00FFFF');
-              console.log(`[VISUALIZER] Time atom broken! Added ${timeBonus}s`);
+              
+              // Award bonus coins for time atoms (base value * 2 + upgrade bonus)
+              const baseCoinValue = atom.value * 2;
+              const bonusCoins = state.upgrades.timeAtomCoins;
+              const totalCoins = baseCoinValue + bonusCoins;
+              gameState.awardCoins(totalCoins);
+              
+              this.showFloatingText(`+${timeBonus.toFixed(1)}s ⏱ +${totalCoins}💰`, atom.x, atom.y, '#00FFFF');
+              console.log(`[VISUALIZER] Time atom broken! Added ${timeBonus}s and ${totalCoins} coins`);
             } else if (atom.specialType === 'supernova') {
               // Supernova atom - release MANY neutrons
               const state = gameState.getState();
@@ -674,12 +736,36 @@ class ReactionVisualizer {
                   pierceRemaining: state.upgrades.pierce,
                 });
               }
-              this.showFloatingText(`💥 ${supernovaNeutrons} neutrons!`, atom.x, atom.y, '#FFFF00');
-              console.log(`[VISUALIZER] Supernova atom broken! Released ${supernovaNeutrons} neutrons`);
+              
+              // Award bonus coins for supernova atoms (base value * 2 + upgrade bonus)
+              const baseCoinValue = atom.value * 2;
+              const bonusCoins = state.upgrades.supernovaCoins;
+              const totalCoins = baseCoinValue + bonusCoins;
+              gameState.awardCoins(totalCoins);
+              
+              this.showFloatingText(`💥 ${supernovaNeutrons}n +${totalCoins}💰`, atom.x, atom.y, '#FFFF00');
+              console.log(`[VISUALIZER] Supernova atom broken! Released ${supernovaNeutrons} neutrons and ${totalCoins} coins`);
             } else if (atom.specialType === 'blackhole') {
               // Black hole atom - it already pulls neutrons, just log
-              this.showFloatingText(`🌀 Black Hole!`, atom.x, atom.y, '#8000FF');
-              console.log(`[VISUALIZER] Black hole atom destroyed!`);
+              const state = gameState.getState();
+              
+              // Award bonus coins for black hole atoms (base value * 2 + upgrade bonus)
+              const baseCoinValue = atom.value * 2;
+              const bonusCoins = state.upgrades.blackHoleCoins;
+              const totalCoins = baseCoinValue + bonusCoins;
+              gameState.awardCoins(totalCoins);
+              
+              // Spawn new atoms when black hole is destroyed
+              const atomsToSpawn = state.upgrades.blackHoleSpawnAtoms;
+              if (atomsToSpawn > 0) {
+                for (let k = 0; k < atomsToSpawn; k++) {
+                  // Delay spawns slightly for visual effect
+                  setTimeout(() => this.spawnAtomNearPoint(atom.x, atom.y), k * 150);
+                }
+              }
+              
+              this.showFloatingText(`🌀 +${totalCoins}💰 +${atomsToSpawn}⚛️`, atom.x, atom.y, '#8000FF');
+              console.log(`[VISUALIZER] Black hole atom destroyed! Awarded ${totalCoins} coins and spawning ${atomsToSpawn} atoms`);
             }
             
             // Normal atom destruction
@@ -718,8 +804,7 @@ class ReactionVisualizer {
                 console.log(`[VISUALIZER] ⚛️ Atom broken → Released ${neutronCount} neutrons | Chain: x${currentState.currentChain} | Active neutrons: ${this.neutrons.length}`);
               }
             } else {
-              // Special atoms still award coins
-              gameState.awardCoins(atom.value * 2); // 2x coins for special atoms
+              // Special atoms - just play sound (coins already awarded above)
               audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
             }
 
@@ -794,12 +879,33 @@ class ReactionVisualizer {
       ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Clock icon
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = `${atom.radius * 1.2}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('⏱', atom.x, atom.y);
+      // Draw clock icon using SVG-style rendering
+      ctx.save();
+      ctx.fillStyle = '#003366';
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      
+      // Clock circle
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Clock hands
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      // Hour hand
+      ctx.beginPath();
+      ctx.moveTo(atom.x, atom.y);
+      ctx.lineTo(atom.x + atom.radius * 0.2, atom.y - atom.radius * 0.25);
+      ctx.stroke();
+      // Minute hand
+      ctx.beginPath();
+      ctx.moveTo(atom.x, atom.y);
+      ctx.lineTo(atom.x + atom.radius * 0.35, atom.y - atom.radius * 0.1);
+      ctx.stroke();
+      
+      ctx.restore();
       
       ctx.globalAlpha = 1;
       return;
@@ -829,12 +935,32 @@ class ReactionVisualizer {
       ctx.fill();
       ctx.stroke();
       
-      // Star icon
-      ctx.fillStyle = '#FF0000';
-      ctx.font = `${atom.radius * 1.3}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💥', atom.x, atom.y);
+      // Draw star icon using SVG-style rendering
+      ctx.save();
+      ctx.fillStyle = '#FF6600';
+      ctx.strokeStyle = '#FF0000';
+      ctx.lineWidth = 2;
+      
+      // 5-pointed star
+      const starRadius = atom.radius * 0.6;
+      const starInnerRadius = atom.radius * 0.3;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const angle = (Math.PI * 2 * i) / 10 - Math.PI / 2;
+        const r = i % 2 === 0 ? starRadius : starInnerRadius;
+        const x = atom.x + Math.cos(angle) * r;
+        const y = atom.y + Math.sin(angle) * r;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      ctx.restore();
       
       ctx.globalAlpha = 1;
       return;
@@ -868,12 +994,39 @@ class ReactionVisualizer {
       ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Black hole icon
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = `${atom.radius * 1.2}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('🌀', atom.x, atom.y);
+      // Draw spiral/vortex icon using SVG-style rendering
+      ctx.save();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      
+      // Spiral effect
+      const spirals = 3;
+      for (let s = 0; s < spirals; s++) {
+        ctx.beginPath();
+        const startAngle = (Math.PI * 2 * s) / spirals;
+        for (let i = 0; i <= 20; i++) {
+          const t = i / 20;
+          const angle = startAngle + t * Math.PI * 2;
+          const r = atom.radius * 0.6 * (1 - t);
+          const x = atom.x + Math.cos(angle) * r;
+          const y = atom.y + Math.sin(angle) * r;
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+      }
+      
+      // Center dot
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
       
       ctx.globalAlpha = 1;
       return;
