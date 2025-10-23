@@ -1,0 +1,14 @@
+﻿{
+  "perma_root": {
+    "id": "perma_root",
+    "name": "Quantum Core",
+    "description": "The foundation of permanent power. All progress here transcends individual runs.",
+    "icon": "prestige_galaxy",
+    "currentLevel": 0,
+    "maxLevel": 1,
+    "baseCost": 0,
+    "costMultiplier": 1.0,
+    "unlocked": true,
+    "connectedNodes": ["perma_branch_foundation", "perma_branch_economy", "perma_branch_automation", "perma_branch_special"]
+  }
+}

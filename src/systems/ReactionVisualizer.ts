@@ -49,10 +49,12 @@ class ReactionVisualizer {
   private floatingTexts: FloatingText[] = [];
   private animationId: number = 0;
   private lastSpawnTime: number = 0;
-  private lastChainResetTime: number = 0;
-  private readonly CHAIN_RESET_DELAY = 1000; // Reset chain if no collisions for 1s
+  private lastCollisionTime: number = 0; // Track last time a neutron hit an atom (for chain logic)
+  private readonly CHAIN_TIMEOUT = 1000; // Reset chain if no collisions for 1s (configurable)
   private clicksDepletedTime: number = 0; // Track when clicks ran out
   private readonly GRACE_PERIOD = 2000; // 2 second grace period after clicks depleted
+  private gameStartTime: number = 0; // Track when game actually started
+  private readonly STARTUP_GRACE_PERIOD = 500; // Don't end game in first 500ms
 
   constructor(canvasElement: HTMLCanvasElement) {
     this.canvas = canvasElement;
@@ -60,6 +62,7 @@ class ReactionVisualizer {
     this.setupCanvas();
     this.setupEventListeners();
     this.startGameLoop();
+    this.gameStartTime = Date.now(); // Mark startup time
   }
 
   /**
@@ -154,12 +157,14 @@ class ReactionVisualizer {
     });
 
     if (clickedAtom) {
-      // Remove non-fissile material
-      this.atoms = this.atoms.filter(a => a !== clickedAtom);
-      return;
+      // Remove non-fissile material and use a click, but DON'T spawn neutrons
+      if (gameState.useClick()) {
+        this.atoms = this.atoms.filter(a => a !== clickedAtom);
+      }
+      return; // Exit early - don't spawn neutrons
     }
 
-    // Use a click
+    // Use a click for spawning neutrons
     if (!gameState.useClick()) {
       return;
     }
@@ -172,6 +177,9 @@ class ReactionVisualizer {
     
     // Base size: 5 pixels, multiplied by upgrade
     const neutronSize = 5 * state.upgrades.neutronSize;
+    
+    // 🔥 Player triggered reaction - initialize collision timer
+    this.lastCollisionTime = Date.now();
     
     // Spawn neutrons in random directions
     for (let i = 0; i < neutronCount; i++) {
@@ -188,6 +196,8 @@ class ReactionVisualizer {
         pierceRemaining: state.upgrades.pierce,
       });
     }
+    
+    console.log(`[VISUALIZER] 🚀 Spawned ${neutronCount} neutrons from click at (${x.toFixed(0)}, ${y.toFixed(0)})`);
   }
 
   /**
@@ -226,7 +236,10 @@ class ReactionVisualizer {
     }
 
     // Check for early end: no clicks left, no neutrons, grace period expired, and time remaining
-    if (state.gameActive && state.clicks <= 0 && this.neutrons.length === 0 && state.timeRemaining > 0) {
+    // BUT: Don't end game during startup grace period
+    const startupComplete = (now - this.gameStartTime) >= this.STARTUP_GRACE_PERIOD;
+    
+    if (startupComplete && state.gameActive && state.clicks <= 0 && this.neutrons.length === 0 && state.timeRemaining > 0) {
       const gracePeriodElapsed = this.clicksDepletedTime > 0 && (now - this.clicksDepletedTime >= this.GRACE_PERIOD);
       
       if (gracePeriodElapsed) {
@@ -258,10 +271,22 @@ class ReactionVisualizer {
       return text.lifetime < 60; // 1 second at 60fps
     });
 
-    // Reset chain if no activity
-    if (this.neutrons.length === 0 && now - this.lastChainResetTime > this.CHAIN_RESET_DELAY) {
+    // 🔥 CHAIN REACTION LOGIC (Criticality-style)
+    // Reset chain ONLY when:
+    // 1. No active neutrons exist (all have expired or been absorbed)
+    // 2. AND at least CHAIN_TIMEOUT (1s) has passed since the last collision
+    // 3. AND a collision has actually occurred this round (lastCollisionTime is recent)
+    // This allows the chain to continue as long as neutrons keep hitting atoms
+    const timeSinceLastCollision = now - this.lastCollisionTime;
+    const currentChain = gameState.getState().currentChain;
+    
+    // Only check for chain reset if:
+    // - No neutrons are active
+    // - A collision happened relatively recently (within last 5 seconds)
+    // - Chain timeout has elapsed since that collision
+    if (this.neutrons.length === 0 && currentChain > 0 && timeSinceLastCollision > this.CHAIN_TIMEOUT && timeSinceLastCollision < 5000) {
+      console.log(`[VISUALIZER] 🔗 Chain ended at x${currentChain}: all neutrons expired naturally (${timeSinceLastCollision}ms since last collision, timeout: ${this.CHAIN_TIMEOUT}ms)`);
       gameState.resetChain();
-      this.lastChainResetTime = now;
     }
   }
 
@@ -600,18 +625,28 @@ class ReactionVisualizer {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < atom.radius) {
-          // Collision detected
+          // 🔥 COLLISION DETECTED - Update last collision time to keep chain alive
+          this.lastCollisionTime = Date.now();
+          
           if (!atom.isFissile) {
-            // Non-fissile material: neutron is absorbed
+            // Non-fissile material: neutron is absorbed (but still counts as collision)
             this.neutrons.splice(i, 1);
             break;
           }
           
+          // Fissile atom hit - damage it
           atom.health--;
-          gameState.incrementChain();
-          this.lastChainResetTime = Date.now();
-
+          
+          // 🔥 Increment chain ONLY when atom is destroyed (not on every hit)
           if (atom.health <= 0) {
+            const chainBefore = gameState.getState().currentChain;
+            gameState.incrementChain();
+            const chainAfter = gameState.getState().currentChain;
+            console.log(`[VISUALIZER] 💥 Atom destroyed! Chain: ${chainBefore} → ${chainAfter}`);
+            
+            // 🔥 UPDATE COLLISION TIME - This extends the chain window when new neutrons are released
+            this.lastCollisionTime = Date.now();
+            
             // SPECIAL ATOM EFFECTS
             if (atom.specialType === 'time') {
               // Time atom - add time to the timer
@@ -652,30 +687,37 @@ class ReactionVisualizer {
             // Normal atom destruction
             if (!atom.specialType) {
               // Atom destroyed - award coins and emit neutrons
+              const currentChain = gameState.getState().currentChain;
               gameState.awardCoins(atom.value);
-              this.showFloatingText(`+${atom.value} x${gameState.getState().currentChain}`, atom.x, atom.y, '#00FF66');
+              
+              // Enhanced floating text with chain indication
+              const chainText = currentChain > 1 ? `⚡ +${atom.value} ×${currentChain} ⚡` : `+${atom.value} ×${currentChain}`;
+              this.showFloatingText(chainText, atom.x, atom.y, '#00FF66');
               
               // Play atom break sound
               audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
               
-              // Emit neutrons based on upgrade
+              // 🔥 Emit neutrons to continue chain reaction
               const currentState = gameState.getState();
               const neutronCount = currentState.upgrades.neutronCountAtom;
               const baseSpeed = 1.0 * currentState.upgrades.neutronSpeed;
               const neutronSize = 5 * currentState.upgrades.neutronSize;
               
-              for (let k = 0; k < neutronCount; k++) {
-                const angle = (Math.PI * 2 * k) / neutronCount + Math.random() * 0.3;
-                
-                this.neutrons.push({
-                  x: atom.x,
-                  y: atom.y,
-                  vx: Math.cos(angle) * baseSpeed,
-                  vy: Math.sin(angle) * baseSpeed,
-                  size: neutronSize,
-                  lifetime: 0,
-                  pierceRemaining: currentState.upgrades.pierce,
-                });
+              if (neutronCount > 0) {
+                for (let k = 0; k < neutronCount; k++) {
+                  const angle = (Math.PI * 2 * k) / neutronCount + Math.random() * 0.3;
+                  
+                  this.neutrons.push({
+                    x: atom.x,
+                    y: atom.y,
+                    vx: Math.cos(angle) * baseSpeed,
+                    vy: Math.sin(angle) * baseSpeed,
+                    size: neutronSize,
+                    lifetime: 0,
+                    pierceRemaining: currentState.upgrades.pierce,
+                  });
+                }
+                console.log(`[VISUALIZER] ⚛️ Atom broken → Released ${neutronCount} neutrons | Chain: x${currentState.currentChain} | Active neutrons: ${this.neutrons.length}`);
               }
             } else {
               // Special atoms still award coins
@@ -981,14 +1023,64 @@ class ReactionVisualizer {
    */
   private drawFloatingText(text: FloatingText): void {
     const ctx = this.ctx;
-    const alpha = 1 - text.lifetime / 60;
+    const progress = text.lifetime / 60; // 0 to 1
+    const alpha = 1 - progress;
     
+    // Extract chain value from text (e.g., "x2" from "+1 x2")
+    const chainMatch = text.text.match(/x(\d+)/);
+    const chainValue = chainMatch ? parseInt(chainMatch[1]) : 1;
+    
+    // Scale and intensity based on chain level
+    let fontSize = 24;
+    let glowIntensity = 10;
+    let textColor = text.color;
+    
+    if (chainValue >= 20) {
+      fontSize = 48; // Legendary
+      glowIntensity = 30;
+      textColor = '#ff6b6b';
+    } else if (chainValue >= 15) {
+      fontSize = 42; // Epic
+      glowIntensity = 25;
+      textColor = '#ffd93d';
+    } else if (chainValue >= 10) {
+      fontSize = 36; // Rare
+      glowIntensity = 20;
+      textColor = '#a78bfa';
+    } else if (chainValue >= 5) {
+      fontSize = 30; // Uncommon
+      glowIntensity = 15;
+      textColor = '#4facfe';
+    } else {
+      fontSize = 24; // Common
+      glowIntensity = 10;
+      textColor = text.color;
+    }
+    
+    // Animate: scale up then fade
+    const scale = progress < 0.2 ? 1 + (0.2 - progress) * 2 : 1; // Pop effect in first 20%
+    const yOffset = text.lifetime * 1.5; // Float upward
+    
+    ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = text.color;
-    ctx.font = 'bold 16px Arial';
+    ctx.translate(text.x, text.y - yOffset);
+    ctx.scale(scale, scale);
+    
+    // Draw glow effect
+    ctx.shadowColor = textColor;
+    ctx.shadowBlur = glowIntensity * alpha;
+    ctx.fillStyle = textColor;
+    ctx.font = `bold ${fontSize}px 'Poppins', Arial, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(text.text, text.x, text.y - text.lifetime);
-    ctx.globalAlpha = 1;
+    ctx.textBaseline = 'middle';
+    
+    // Draw text with stroke for better visibility
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(text.text, 0, 0);
+    ctx.fillText(text.text, 0, 0);
+    
+    ctx.restore();
   }
 
   /**
@@ -998,6 +1090,9 @@ class ReactionVisualizer {
     this.neutrons = [];
     this.atoms = [];
     this.floatingTexts = [];
+    this.lastCollisionTime = Date.now(); // Reset collision timer for new game
+    this.gameStartTime = Date.now(); // Reset startup grace period for new game
+    this.clicksDepletedTime = 0; // Reset clicks depleted timer
   }
 }
 

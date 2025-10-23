@@ -9,11 +9,13 @@ import { gameState } from '../systems/GameStateManager';
 
 export class HomePage {
   private container: HTMLElement;
+  private updateInterval: number | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.render();
     this.setupEventListeners();
+    this.startCurrencyUpdate();
   }
 
   private render(): void {
@@ -29,7 +31,7 @@ export class HomePage {
               <path d="M21 12c.6 0 1-.4 1-1-.3-2.9-1.8-5.5-4.1-7.1-.4-.3-1.1-.2-1.3.3-.6.9-1.5 2.5-2.6 4.3 1.2.7 2 2 2 3.5h5z"/>
               <path d="M7.5 19.8c-.3.5-.1 1.1.4 1.3 2.6 1.2 5.6 1.2 8.2 0 .5-.2.7-.8.4-1.3-.5-.9-1.4-2.5-2.5-4.3-1.2.7-2.8.7-4 0-1.1 1.8-2 3.4-2.5 4.3z"/>
             </svg>
-            <span class="meta-amount">${state.metaCurrency}</span>
+            <span class="meta-amount" id="home-quantum-cores">${state.quantumCores}</span>
             <span class="meta-label">Quantum Cores</span>
           </div>
         </div>
@@ -379,7 +381,22 @@ export class HomePage {
     document.addEventListener('keydown', handleEscape);
   }
 
+  private startCurrencyUpdate(): void {
+    // Update quantum cores display every 500ms
+    this.updateInterval = window.setInterval(() => {
+      const state = gameState.getState();
+      const coresEl = document.getElementById('home-quantum-cores');
+      if (coresEl) {
+        coresEl.textContent = state.quantumCores.toString();
+      }
+    }, 500);
+  }
+
   destroy(): void {
-    // Cleanup if needed
+    // Clear the update interval
+    if (this.updateInterval !== null) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
   }
 }

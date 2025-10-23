@@ -16,6 +16,7 @@ export class GamePage {
   private isPaused: boolean = false;
   private pausedTimeRemaining: number = 0;
   private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  private gameStarted: boolean = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -167,9 +168,9 @@ export class GamePage {
     this.container.appendChild(overlay);
 
     // Add event listeners
-    document.getElementById('confirm-reset')?.addEventListener('click', () => {
+    document.getElementById('confirm-reset')?.addEventListener('click', async () => {
       audioManager.playSFX(AudioType.SFX_CLICK);
-      const earned = gameState.resetRun();
+      const earned = await gameState.resetRun();
       overlay.remove();
       NavigationManager.navigateTo('home');
     });
@@ -275,6 +276,11 @@ export class GamePage {
 
     // Start the game session
     gameState.startGame();
+    
+    // Mark game as started after a brief delay to ensure proper initialization
+    setTimeout(() => {
+      this.gameStarted = true;
+    }, 100);
 
     // Start update loop (20 FPS for HUD updates)
     this.updateInterval = window.setInterval(() => {
@@ -295,9 +301,9 @@ export class GamePage {
     const state = gameState.getState();
     if (!state) return;
 
-    // Check if game ended (only show once and not while paused)
+    // Check if game ended (only show once, not while paused, and only after game has actually started)
     // Game is ended by ReactionVisualizer when time runs out OR (clicks are 0 AND no neutrons remain)
-    if (!this.isPaused && !state.gameActive && !this.gameOverShown) {
+    if (this.gameStarted && !this.isPaused && !state.gameActive && !this.gameOverShown) {
       this.gameOverShown = true;
       this.showGameOver();
     }
@@ -308,11 +314,11 @@ export class GamePage {
       coinsValue.textContent = state.coins.toString();
     }
 
-    // Update chain (show max chain reached this round)
+    // Update chain (show current active chain)
     const chainValue = document.getElementById('chain-value');
     if (chainValue) {
-      chainValue.textContent = `×${state.maxChain}`;
-      if (state.maxChain > 5) {
+      chainValue.textContent = `×${state.currentChain}`;
+      if (state.currentChain > 5) {
         chainValue.classList.add('pulse');
       } else {
         chainValue.classList.remove('pulse');
@@ -415,7 +421,18 @@ export class GamePage {
       overlay.remove();
       // Reset game state and restart
       this.gameOverShown = false;
+      this.gameStarted = false;
+      
+      // Reset visualizer to clear atoms and neutrons
+      if (this.visualizer) {
+        this.visualizer.reset();
+      }
+      
       gameState.startGame();
+      // Re-enable game started flag after brief delay
+      setTimeout(() => {
+        this.gameStarted = true;
+      }, 100);
     });
 
     document.getElementById('skill-tree-btn')?.addEventListener('click', () => {

@@ -49,6 +49,9 @@ export class SkillTreePage {
   private lastMouseX: number = 0;
   private lastMouseY: number = 0;
   private saveTimeout: number | null = null;
+  private animationFrameId: number | null = null;
+  private hoveredSkill: SkillNode | null = null;
+  private clickedNodes: Map<string, number> = new Map(); // skillId -> timestamp
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -217,7 +220,7 @@ export class SkillTreePage {
       this.calculateOptimizedLayout(); // Calculate positions first
       this.setupEventListeners();
       this.centerView();
-      this.draw();
+      this.startAnimationLoop();
     });
   }
 
@@ -249,6 +252,14 @@ export class SkillTreePage {
     this.ctx = this.canvas.getContext('2d');
   }
 
+  private startAnimationLoop(): void {
+    const animate = () => {
+      this.draw();
+      this.animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+  }
+
   private draw(): void {
     if (!this.canvas || !this.ctx) return;
 
@@ -265,10 +276,13 @@ export class SkillTreePage {
 
     this.calculateOptimizedLayout();
 
-    const nodeRadius = 35;
+    const nodeRadius = 50; // Increased from 35 to 50
 
     // Only get visible nodes (root + purchased nodes' children)
     const visibleNodes = this.getVisibleNodes();
+    
+    // Get current coins for affordability checks
+    const currentCoins = gameState.getState().coins;
 
     // Draw connections only for visible nodes
     visibleNodes.forEach(skill => {
@@ -278,22 +292,37 @@ export class SkillTreePage {
         const connected = this.skills.get(connectedId);
         if (!connected || !visibleNodes.has(connected) || !skill.x || !skill.y || !connected.x || !connected.y) return;
 
-        ctx.beginPath();
-        ctx.moveTo(skill.x, skill.y);
-        ctx.lineTo(connected.x, connected.y);
-
         // Use effective levels for connection styling
         const skillEffectiveLevel = this.getEffectiveLevel(skill.id);
+        const connectedEffectiveLevel = this.getEffectiveLevel(connectedId);
         const connectedEffectivelyUnlocked = this.isEffectivelyUnlocked(connectedId);
+        const bothMaxed = skillEffectiveLevel >= skill.maxLevel && connectedEffectiveLevel >= connected.maxLevel;
 
+        // Draw glow for active connections
         if (skillEffectiveLevel > 0 && connectedEffectivelyUnlocked) {
+          ctx.beginPath();
+          ctx.moveTo(skill.x, skill.y);
+          ctx.lineTo(connected.x, connected.y);
+          
+          // Cyan glow for all active connections (including maxed)
+          ctx.strokeStyle = 'rgba(0, 255, 170, 0.2)';
+          ctx.lineWidth = 6;
+          ctx.stroke();
           ctx.strokeStyle = 'rgba(0, 255, 170, 0.7)';
           ctx.lineWidth = 3;
         } else if (connectedEffectivelyUnlocked) {
+          // Blue for available
+          ctx.beginPath();
+          ctx.moveTo(skill.x, skill.y);
+          ctx.lineTo(connected.x, connected.y);
           ctx.strokeStyle = 'rgba(79, 172, 254, 0.6)';
           ctx.lineWidth = 2.5;
         } else {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          // Dim for locked
+          ctx.beginPath();
+          ctx.moveTo(skill.x, skill.y);
+          ctx.lineTo(connected.x, connected.y);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
           ctx.lineWidth = 2;
         }
 
@@ -310,59 +339,174 @@ export class SkillTreePage {
       const isEffectivelyUnlocked = this.isEffectivelyUnlocked(skill.id);
       const isPurchased = effectiveLevel > 0;
       const isMaxed = effectiveLevel >= skill.maxLevel;
+      const isHovered = this.hoveredSkill?.id === skill.id;
+      
+      // Check if node is affordable
+      const cost = Math.floor(skill.baseCost * Math.pow(skill.costMultiplier, effectiveLevel));
+      const isAffordable = isEffectivelyUnlocked && !isMaxed && currentCoins >= cost;
 
-      ctx.beginPath();
-      ctx.arc(skill.x, skill.y, nodeRadius, 0, Math.PI * 2);
+      // Animated pulse for affordable nodes only
+      const time = Date.now() / 1000;
+      const pulseScale = isAffordable ? 1 + Math.sin(time * 3) * 0.05 : 1;
+      const hoverScale = isHovered ? 1.15 : 1;
+      
+      // Click animation effect
+      const clickTime = this.clickedNodes.get(skill.id);
+      let clickScale = 1;
+      if (clickTime) {
+        const elapsed = Date.now() - clickTime;
+        if (elapsed < 300) {
+          // Bounce effect: 0 -> 1.3 -> 1
+          const progress = elapsed / 300;
+          clickScale = 1 + Math.sin(progress * Math.PI) * 0.3;
+        } else {
+          this.clickedNodes.delete(skill.id);
+        }
+      }
+      
+      const currentRadius = nodeRadius * pulseScale * hoverScale * clickScale;
 
-      if (isMaxed) {
-        ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
-        ctx.strokeStyle = '#ffd700';
-        ctx.lineWidth = 5;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
-      } else if (isPurchased) {
-        ctx.fillStyle = 'rgba(0, 255, 170, 0.95)';
-        ctx.strokeStyle = '#00ffaa';
-        ctx.lineWidth = 4;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = 'rgba(0, 255, 170, 0.6)';
-      } else if (isEffectivelyUnlocked) {
-        ctx.fillStyle = 'rgba(79, 172, 254, 0.95)';
-        ctx.strokeStyle = '#4facfe';
-        ctx.lineWidth = 4;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = 'rgba(79, 172, 254, 0.7)';
-      } else {
-        ctx.fillStyle = 'rgba(80, 80, 80, 0.9)';
-        ctx.strokeStyle = 'rgba(120, 120, 120, 0.7)';
-        ctx.lineWidth = 3;
+      // Draw outer glow ring ONLY for affordable nodes
+      if (isAffordable) {
+        ctx.beginPath();
+        ctx.arc(skill.x, skill.y, currentRadius + 12, 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(skill.x, skill.y, currentRadius, skill.x, skill.y, currentRadius + 12);
+        gradient.addColorStop(0, 'rgba(79, 172, 254, 0.6)');
+        gradient.addColorStop(1, 'rgba(79, 172, 254, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
       }
 
-      ctx.fill();
-      ctx.stroke();
+      // Main node circle with gradient
+      ctx.beginPath();
+      ctx.arc(skill.x, skill.y, currentRadius, 0, Math.PI * 2);
+
+      if (isMaxed) {
+        // Maxed: Same gradient as purchased nodes (cyan/green)
+        const gradient = ctx.createRadialGradient(
+          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
+          skill.x, skill.y, currentRadius
+        );
+        gradient.addColorStop(0, '#6fffd2');
+        gradient.addColorStop(0.6, '#00ffaa');
+        gradient.addColorStop(1, '#00cc88');
+        ctx.fillStyle = gradient;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = 'rgba(0, 255, 170, 0.5)';
+        ctx.fill();
+        
+        // Green border for maxed (no glow, just solid green)
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+      } else if (isPurchased) {
+        // Purchased: Cyan/green gradient with glow
+        const gradient = ctx.createRadialGradient(
+          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
+          skill.x, skill.y, currentRadius
+        );
+        gradient.addColorStop(0, '#6fffd2');
+        gradient.addColorStop(0.6, '#00ffaa');
+        gradient.addColorStop(1, '#00cc88');
+        ctx.fillStyle = gradient;
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = 'rgba(0, 255, 170, 0.7)';
+        ctx.fill();
+        
+        ctx.strokeStyle = '#00ffaa';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      } else if (isEffectivelyUnlocked) {
+        // Available: Blue gradient with strong glow and pulse
+        const gradient = ctx.createRadialGradient(
+          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
+          skill.x, skill.y, currentRadius
+        );
+        gradient.addColorStop(0, '#a5d8ff');
+        gradient.addColorStop(0.5, '#4facfe');
+        gradient.addColorStop(1, '#0077cc');
+        ctx.fillStyle = gradient;
+        ctx.shadowBlur = 22;
+        ctx.shadowColor = 'rgba(79, 172, 254, 0.8)';
+        ctx.fill();
+        
+        // Animated border
+        ctx.strokeStyle = '#4facfe';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        
+        // Inner highlight
+        ctx.beginPath();
+        ctx.arc(skill.x - currentRadius * 0.25, skill.y - currentRadius * 0.25, currentRadius * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fill();
+      } else {
+        // Locked: Dark gradient
+        const gradient = ctx.createRadialGradient(
+          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
+          skill.x, skill.y, currentRadius
+        );
+        gradient.addColorStop(0, 'rgba(100, 100, 100, 0.9)');
+        gradient.addColorStop(1, 'rgba(60, 60, 60, 0.9)');
+        ctx.fillStyle = gradient;
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.fill();
+        
+        ctx.strokeStyle = 'rgba(120, 120, 120, 0.7)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      
       ctx.shadowBlur = 0;
+      skill.radius = currentRadius;
 
-      skill.radius = nodeRadius;
-
-      // Icon
+      // Icon with better styling
       const icon = this.getSkillIcon(skill);
-      const fontSize = nodeRadius * 0.9;
-      ctx.font = `${fontSize}px Arial`;
+      const fontSize = currentRadius * 0.85;
+      ctx.font = `bold ${fontSize}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = isEffectivelyUnlocked ? '#fff' : 'rgba(180, 180, 180, 0.6)';
+      
+      // Icon shadow for depth
+      if (isEffectivelyUnlocked) {
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+      }
+      
+      ctx.fillStyle = isEffectivelyUnlocked ? '#fff' : 'rgba(140, 140, 140, 0.7)';
       ctx.fillText(icon, skill.x, skill.y);
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
 
-      // Level indicator
+      // Level indicator with better styling
       if (isPurchased) {
         const levelText = `${effectiveLevel}/${skill.maxLevel}`;
-        const levelFontSize = nodeRadius * 0.4;
+        const levelFontSize = currentRadius * 0.38;
+        const levelY = skill.y + currentRadius + 18;
+        
+        // Background badge for level
+        const textMetrics = ctx.measureText(levelText);
+        const badgeWidth = textMetrics.width + 12;
+        const badgeHeight = levelFontSize + 6;
+        const badgeX = skill.x - badgeWidth / 2;
+        const badgeY = levelY - levelFontSize / 2 - 3;
+        
+        ctx.fillStyle = isMaxed ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8);
+        ctx.fill();
+        
+        // Level text
         ctx.font = `bold ${levelFontSize}px Arial`;
-        ctx.fillStyle = '#fff';
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillStyle = isMaxed ? '#ffd700' : '#00ffaa';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.lineWidth = 3;
-        ctx.strokeText(levelText, skill.x, skill.y + nodeRadius + 15);
-        ctx.fillText(levelText, skill.x, skill.y + nodeRadius + 15);
+        ctx.strokeText(levelText, skill.x, levelY);
+        ctx.fillText(levelText, skill.x, levelY);
       }
     });
 
@@ -407,127 +551,110 @@ export class SkillTreePage {
   private calculateOptimizedLayout(): void {
     if (!this.canvas) return;
 
-    // Fixed positions for all nodes to prevent any overlap
-    // Layout: Root at center, 6 paths in a radial pattern
+    // Grid-based layout for perfect positioning without overlaps
+    // Grid cells: 150px spacing (horizontal and vertical)
+    // Origin at (500, 500), grid extends in rows and columns
+    
+    const gridSize = 150; // Distance between grid cells
+    const offsetX = 500;  // Starting X position
+    const offsetY = 500;  // Starting Y position
+    
+    // Helper function to get grid position
+    const grid = (col: number, row: number) => ({
+      x: offsetX + col * gridSize,
+      y: offsetY + row * gridSize
+    });
+    
     const positions: { [key: string]: { x: number; y: number } } = {
-      // Root node at center
-      'root': { x: 2000, y: 3000 },
+      // === ROW 0: Ultimate Neutron ===
+      'ultimate_neutron': grid(6, 0),
       
-      // Path unlocks in radial pattern around root (600px radius)
-      'neutron_basics': { x: 2000, y: 2200 },        // Top
-      'atom_basics': { x: 2520, y: 2400 },           // Top-Right
-      'chain_basics': { x: 2520, y: 3600 },          // Bottom-Right
-      'resource_basics': { x: 2000, y: 3800 },       // Bottom
-      'economy_basics': { x: 1480, y: 3600 },        // Bottom-Left
-      'special_atom_basics': { x: 1480, y: 2400 },   // Top-Left
+      // === ROW 1-2: Neutron Path Upper Branches ===
+      'neutron_homing': grid(3, 1),
+      'neutron_lifetime_2': grid(4, 1),
+      'neutron_pierce': grid(8, 1),
+      'neutron_speed_2': grid(9, 1),
       
-      // === NEUTRON PATH (Top branch) ===
-      // Neutron count line (horizontal)
-      'neutron_count_1': { x: 2000, y: 1700 },
-      'neutron_count_2': { x: 2000, y: 1400 },
-      'neutron_count_3': { x: 2000, y: 1100 },
+      'neutron_lifetime_1': grid(4, 2),
+      'neutron_count_3': grid(6, 2),
+      'neutron_speed_1': grid(8, 2),
       
-      // Neutron speed line (diagonal right)
-      'neutron_speed_1': { x: 2300, y: 1900 },
-      'neutron_speed_2': { x: 2600, y: 1700 },
-      'neutron_pierce': { x: 2900, y: 1500 },
+      // === ROW 3: Time Atoms + Neutron Mid + Critical Neutron ===
+      'time_atom_chance_1': grid(2, 3),
+      'unlock_time_atoms': grid(3, 3),
+      'time_atom_value_1': grid(4, 3),
+      'neutron_size_1': grid(5, 3),
+      'neutron_count_2': grid(6, 3),
+      'critical_neutron_chance_1': grid(8, 3),
+      'critical_neutron_effect_1': grid(9, 3),
       
-      // Neutron lifetime line (diagonal left)
-      'neutron_lifetime_1': { x: 1700, y: 1900 },
-      'neutron_lifetime_2': { x: 1400, y: 1700 },
-      'neutron_homing': { x: 1100, y: 1500 },
+      // === ROW 4: Special Atoms Path + Neutron Basics + Atom Upper ===
+      'supernova_atom_chance_1': grid(1, 4),
+      'unlock_supernova_atoms': grid(2, 4),
+      'supernova_atom_neutrons_1': grid(3, 4),
+      'special_atom_basics': grid(4, 4),
+      'neutron_count_1': grid(6, 4),
+      'critical_neutron_unlock': grid(8, 4),
+      'atom_spawn_rate_2': grid(10, 4),
+      'ultimate_fission': grid(0, 4),
       
-      // Neutron size (straight up)
-      'neutron_size_1': { x: 2000, y: 1900 },
+      // === ROW 5: Neutron Basics + Atom Basics ===
+      'black_hole_atom_chance_1': grid(2, 5),
+      'black_hole_pull_radius_1': grid(3, 5),
+      'neutron_basics': grid(6, 5),
+      'atom_basics': grid(8, 5),
+      'atom_spawn_rate_1': grid(9, 5),
       
-      // Critical neutron system (right side)
-      'critical_neutron_unlock': { x: 2400, y: 2200 },
-      'critical_neutron_chance_1': { x: 2700, y: 2100 },
-      'critical_neutron_effect_1': { x: 2700, y: 2300 },
+      // === ROW 6: ROOT + Atom Mid Branch ===
+      'unlock_black_hole_atoms': grid(3, 6),
+      'root': grid(6, 6),
+      'atom_size_1': grid(8, 6),
+      'atom_neutron_count_1': grid(9, 6),
+      'atom_neutron_count_2': grid(10, 6),
+      'atom_neutron_count_3': grid(11, 6),
       
-      // === ATOM PATH (Top-Right branch) ===
-      // Atom spawn rate (diagonal out)
-      'atom_spawn_rate_1': { x: 2800, y: 2200 },
-      'atom_spawn_rate_2': { x: 3100, y: 2100 },
+      // === ROW 7: Economy + Chain Basics + Atom Lower ===
+      'base_coin_value_2': grid(2, 7),
+      'base_coin_value_1': grid(3, 7),
+      'economy_basics': grid(4, 7),
+      'chain_basics': grid(8, 7),
+      'atom_lifetime_1': grid(9, 7),
+      'atom_shockwave_unlock': grid(10, 7),
+      'atom_shockwave_force_1': grid(11, 7),
+      'ultimate_atom': grid(12, 7),
       
-      // Atom size (right)
-      'atom_size_1': { x: 2900, y: 2400 },
+      // === ROW 8: Economy Lower + Resource Basics + Chain Mid ===
+      'starting_coins_1': grid(2, 8),
+      'skill_cost_reduction_1': grid(3, 8),
+      'resource_basics': grid(6, 8),
+      'neutron_reflector': grid(7, 8),
+      'chain_multiplier_1': grid(8, 8),
+      'chain_multiplier_2': grid(9, 8),
+      'chain_multiplier_3': grid(10, 8),
+      'ultimate_economy': grid(0, 8),
       
-      // Atom lifetime (diagonal down-right)
-      'atom_lifetime_1': { x: 2800, y: 2600 },
+      // === ROW 9: Click Shockwave + Clicks + Chain Lower ===
+      'click_shockwave_unlock': grid(5, 9),
+      'max_clicks_1': grid(6, 9),
+      'max_time_1': grid(7, 9),
+      'momentum': grid(9, 9),
       
-      // Atom neutron count (horizontal right)
-      'atom_neutron_count_1': { x: 2900, y: 2400 },
-      'atom_neutron_count_2': { x: 3200, y: 2400 },
-      'atom_neutron_count_3': { x: 3500, y: 2400 },
+      // === ROW 10: Clicks + Time Mid ===
+      'click_shockwave_radius_1': grid(5, 10),
+      'max_clicks_2': grid(6, 10),
+      'max_time_2': grid(7, 10),
+      'ultimate_chain': grid(10, 10),
       
-      // Atom shockwave system
-      'atom_shockwave_unlock': { x: 2900, y: 2800 },
-      'atom_shockwave_force_1': { x: 3200, y: 2800 },
+      // === ROW 11: Clicks + Time Lower ===
+      'max_clicks_3': grid(6, 11),
+      'max_time_3': grid(7, 11),
       
-      // === CHAIN PATH (Bottom-Right branch) ===
-      // Chain multiplier (horizontal right)
-      'chain_multiplier_1': { x: 2900, y: 3600 },
-      'chain_multiplier_2': { x: 3200, y: 3600 },
-      'chain_multiplier_3': { x: 3500, y: 3600 },
+      // === ROW 12: Clicks + Time Final ===
+      'max_clicks_4': grid(6, 12),
+      'max_time_4': grid(7, 12),
       
-      // Momentum (diagonal down-right)
-      'momentum': { x: 2800, y: 3900 },
-      
-      // Reflector (down from path)
-      'neutron_reflector': { x: 2520, y: 3900 },
-      
-      // === RESOURCE PATH (Bottom branch) ===
-      // Max clicks (horizontal)
-      'max_clicks_1': { x: 2000, y: 4100 },
-      'max_clicks_2': { x: 2000, y: 4400 },
-      'max_clicks_3': { x: 2000, y: 4700 },
-      'max_clicks_4': { x: 2000, y: 5000 },
-      
-      // Max time (diagonal left)
-      'max_time_1': { x: 1700, y: 4100 },
-      'max_time_2': { x: 1400, y: 4300 },
-      'max_time_3': { x: 1100, y: 4500 },
-      'max_time_4': { x: 800, y: 4700 },
-      
-      // Click shockwave system (diagonal right)
-      'click_shockwave_unlock': { x: 2300, y: 4100 },
-      'click_shockwave_radius_1': { x: 2600, y: 4300 },
-      
-      // === ECONOMY PATH (Bottom-Left branch) ===
-      // Base coin value (horizontal left)
-      'base_coin_value_1': { x: 1100, y: 3600 },
-      'base_coin_value_2': { x: 700, y: 3600 },
-      
-      // Skill cost reduction (diagonal down-left)
-      'skill_cost_reduction_1': { x: 1200, y: 3900 },
-      
-      // Starting coins (left from path)
-      'starting_coins_1': { x: 900, y: 3900 },
-      
-      // === SPECIAL ATOMS PATH (Top-Left branch) ===
-      // Time atoms (diagonal up-left)
-      'unlock_time_atoms': { x: 1100, y: 2100 },
-      'time_atom_chance_1': { x: 800, y: 1900 },
-      'time_atom_value_1': { x: 800, y: 2300 },
-      
-      // Supernova atoms (left from path)
-      'unlock_supernova_atoms': { x: 1000, y: 2400 },
-      'supernova_atom_chance_1': { x: 600, y: 2300 },
-      'supernova_atom_neutrons_1': { x: 600, y: 2500 },
-      
-      // Black Hole atoms (diagonal down-left)
-      'unlock_black_hole_atoms': { x: 1100, y: 2700 },
-      'black_hole_atom_chance_1': { x: 800, y: 2600 },
-      'black_hole_pull_radius_1': { x: 800, y: 2800 },
-      
-      // === ULTIMATES (Outer ring) ===
-      'ultimate_neutron': { x: 2000, y: 800 },           // Top
-      'ultimate_atom': { x: 3300, y: 2100 },             // Right
-      'ultimate_chain': { x: 3800, y: 3600 },            // Bottom-Right
-      'ultimate_resource': { x: 2000, y: 5300 },         // Bottom
-      'ultimate_economy': { x: 400, y: 3600 },           // Left
-      'ultimate_fission': { x: 500, y: 2400 },           // Top-Left
+      // === ROW 13: Ultimate Resource ===
+      'ultimate_resource': grid(6, 13),
     };
 
     // Apply positions
@@ -560,12 +687,13 @@ export class SkillTreePage {
       console.log('[SkillTree] Restored camera:', savedCamera);
     } else {
       // First time - center on root node
-      // Root is at (2000, 3000), tree spans from ~400 to ~3800 in both dimensions
-      const treeCenterX = 2000; // Root X position
-      const treeCenterY = 3000; // Root Y position
+      // Root is at grid(6, 6) = (500 + 6*150, 500 + 6*150) = (1400, 1400)
+      // Grid spans from (500, 500) to (~2300, ~2450) - 14 rows x 13 cols
+      const treeCenterX = 1400; // Root X position (grid col 6)
+      const treeCenterY = 1400; // Root Y position (grid row 6)
       
       // Start with scale that shows entire tree
-      this.scale = 0.25;
+      this.scale = 0.5;
       
       this.offsetX = this.canvas.width / 2 - treeCenterX * this.scale;
       this.offsetY = this.canvas.height / 2 - treeCenterY * this.scale;
@@ -748,7 +876,19 @@ export class SkillTreePage {
 
   private handleHover(e: MouseEvent): void {
     const skill = this.getSkillAtPoint(e);
-    skill ? this.showTooltip(skill, e.clientX, e.clientY) : this.hideTooltip();
+    this.hoveredSkill = skill;
+    
+    if (skill) {
+      this.showTooltip(skill, e.clientX, e.clientY);
+      if (this.canvas) {
+        this.canvas.style.cursor = 'pointer';
+      }
+    } else {
+      this.hideTooltip();
+      if (this.canvas) {
+        this.canvas.style.cursor = this.isDragging ? 'grabbing' : 'grab';
+      }
+    }
   }
 
   private getSkillAtPoint(e: MouseEvent): SkillNode | null {
@@ -1191,13 +1331,15 @@ export class SkillTreePage {
       // Apply the skill effect directly to game state
       this.applySkillEffect(skillId, this.getEffectiveLevel(skillId));
 
+      // Trigger click animation
+      this.clickedNodes.set(skillId, Date.now());
+
       // Update UI
       const coinsDisplay = document.getElementById('coins-value');
       if (coinsDisplay) {
         coinsDisplay.textContent = gameState.getState().coins.toString();
       }
 
-      this.draw();
       audioManager.playSFX(AudioType.SFX_UPGRADE);
       gameState.saveGame();
       
@@ -1260,6 +1402,13 @@ export class SkillTreePage {
   }
 
   destroy(): void {
-    // Cleanup
+    // Stop animation loop
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    
+    // Cleanup event listeners
+    window.removeEventListener('resize', this.resizeCanvas);
   }
 }

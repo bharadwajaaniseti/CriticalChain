@@ -84,6 +84,13 @@ class AudioManager {
     try {
       const path = AUDIO_MAP[type];
       const response = await fetch(path);
+      
+      // Check if file exists
+      if (!response.ok) {
+        // Silently skip placeholder files that don't exist
+        return;
+      }
+      
       const arrayBuffer = await response.arrayBuffer();
 
       if (this.audioContext) {
@@ -92,7 +99,11 @@ class AudioManager {
         console.log(`[AUDIO] Preloaded ${type}`);
       }
     } catch (error) {
-      console.warn(`[AUDIO] Failed to preload ${type}:`, error);
+      // Silently skip missing or invalid audio files (placeholders)
+      // Only log if it's the actual audio file we have
+      if (type === AudioType.SFX_ATOM_BREAK) {
+        console.warn(`[AUDIO] Failed to preload ${type}:`, error);
+      }
     }
   }
 
@@ -101,8 +112,7 @@ class AudioManager {
    */
   playSFX(type: AudioType): void {
     if (!this.audioContext) {
-      console.warn('[AUDIO] Audio context not initialized');
-      return;
+      return; // Silently skip if no audio context
     }
 
     // Resume context if suspended
@@ -114,7 +124,7 @@ class AudioManager {
 
     const buffer = this.audioCache.get(type);
     if (!buffer) {
-      console.warn(`[AUDIO] Audio not loaded: ${type}`);
+      // Silently skip missing placeholder audio files
       return;
     }
 

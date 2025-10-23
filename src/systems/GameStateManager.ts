@@ -107,6 +107,21 @@ class GameStateManager {
   constructor() {
     this.state = this.initializeState();
     this.startAutosave();
+    this.initializePrestigeBonuses();
+  }
+
+  /**
+   * Initialize prestige bonuses on game load
+   */
+  private async initializePrestigeBonuses(): Promise<void> {
+    try {
+      const { prestigeSystem } = await import('./PrestigeSystem');
+      const bonuses = prestigeSystem.calculateBonuses();
+      this.prestigeCoinMultiplier = bonuses.coinValueMultiplier;
+      this.prestigeMultiplierLastUpdate = Date.now();
+    } catch (e) {
+      console.log('[GameState] Prestige system not yet loaded');
+    }
   }
 
   private initializeState(): GameState {
@@ -325,10 +340,9 @@ class GameStateManager {
       this.state.clicks--;
       this.state.shots++;
       
-      // Reset chain if momentum upgrade not active
-      if (this.state.upgrades.momentum === 0) {
-        this.state.currentChain = 0;
-      }
+      // DON'T reset chain here - let it be managed by the Criticality-style chain logic
+      // Chain will only reset when all neutrons naturally expire without collisions
+      // This allows the chain counter to properly track all atoms destroyed in a reaction
       
       return true;
     }
@@ -373,10 +387,12 @@ class GameStateManager {
    * Increment chain counter
    */
   incrementChain(amount: number = 1): void {
+    const before = this.state.currentChain;
     this.state.currentChain += amount;
     if (this.state.currentChain > this.state.maxChain) {
       this.state.maxChain = this.state.currentChain;
     }
+    console.log(`[GameState] incrementChain: ${before} + ${amount} = ${this.state.currentChain}`);
   }
 
   /**
@@ -394,8 +410,11 @@ class GameStateManager {
    * Longer chains are worth more
    */
   awardCoins(atomValue: number): void {
+    // Get prestige bonuses synchronously (cached calculation)
+    const prestigeMultiplier = this.getPrestigeCoinMultiplier();
+    
     const chainBonus = 1 + (this.state.currentChain * 0.1 * this.state.upgrades.chainMultiplier);
-    const coins = Math.floor(atomValue * chainBonus);
+    const coins = Math.floor(atomValue * chainBonus * prestigeMultiplier);
     this.state.coins += coins;
     this.state.score += coins;
     this.state.totalAtomsDestroyed++;
@@ -403,6 +422,25 @@ class GameStateManager {
     // Check for rank up
     this.checkRankUp();
   }
+
+  /**
+   * Get cached prestige coin multiplier (to avoid recalculating on every coin award)
+   */
+  private prestigeCoinMultiplier: number = 1;
+  
+  private getPrestigeCoinMultiplier(): number {
+    // Use cached value (updated on game load and after prestige upgrades)
+    return this.prestigeCoinMultiplier;
+  }
+  
+  /**
+   * Force recalculation of prestige bonuses (call after purchasing prestige upgrades)
+   */
+  async recalculatePrestigeBonuses(): Promise<void> {
+    await this.initializePrestigeBonuses();
+  }
+  
+  private prestigeMultiplierLastUpdate: number = 0;
 
   /**
    * Check if player should rank up
@@ -539,18 +577,24 @@ class GameStateManager {
    * Start a fresh run - reset coins, rank, and skill tree but keep quantum cores and prestige upgrades
    */
   async startFreshRun(): Promise<void> {
+    // Calculate prestige bonuses and update cached values
+    const { prestigeSystem } = await import('./PrestigeSystem');
+    const bonuses = prestigeSystem.calculateBonuses();
+    this.prestigeCoinMultiplier = bonuses.coinValueMultiplier;
+    
     // Reset run-specific stats only (keep quantum cores, prestige upgrades, totalAtomsDestroyed, and highestRank)
-    this.state.coins = 0;
+    // Apply prestige bonuses to starting resources
+    this.state.coins = bonuses.startingCoins;
     this.state.shots = 0;
     this.state.time = 0;
     this.state.rank = 0;
     this.state.currentChain = 0;
     this.state.maxChain = 0;
     this.state.score = 0;
-    this.state.clicks = 2;
-    this.state.maxClicks = 2;
-    this.state.timeRemaining = 10;
-    this.state.maxTime = 10;
+    this.state.clicks = 2 + bonuses.startingClicks;
+    this.state.maxClicks = 2 + bonuses.startingClicks;
+    this.state.timeRemaining = 10 + bonuses.startingTime;
+    this.state.maxTime = 10 + bonuses.startingTime;
     this.state.gameActive = false;
     // Don't reset totalAtomsDestroyed - it's a lifetime stat
     
@@ -621,10 +665,15 @@ class GameStateManager {
    * Reset run and award meta currency based on rank
    * Returns the meta currency earned
    */
-  resetRun(): number {
+  async resetRun(): Promise<number> {
+    // Calculate prestige bonuses
+    const { prestigeSystem } = await import('./PrestigeSystem');
+    const bonuses = prestigeSystem.calculateBonuses();
+    
     // Calculate meta currency and quantum cores based on rank
     const metaEarned = this.state.rank;
-    const quantumEarned = Math.floor(this.state.rank / 2); // 1 quantum core per 2 ranks
+    const baseQuantumEarned = Math.floor(this.state.rank / 2); // 1 quantum core per 2 ranks
+    const quantumEarned = Math.floor(baseQuantumEarned * bonuses.quantumGainMultiplier); // Apply multiplier
     
     this.state.metaCurrency += metaEarned;
     this.state.quantumCores += quantumEarned;
@@ -665,6 +714,25 @@ class GameStateManager {
    */
   addQuantumCores(amount: number): void {
     this.state.quantumCores += amount;
+    this.saveGame();
+  }
+
+  deductQuantumCores(amount: number): boolean {
+    if (this.state.quantumCores >= amount) {
+      this.state.quantumCores -= amount;
+      this.saveGame();
+      return true;
+    }
+    return false;
+  }
+
+  savePrestigeUpgrade(upgradeId: string, currentLevel: number, unlocked: boolean): void {
+    this.state.prestigeUpgrades[upgradeId] = { currentLevel, unlocked };
+    this.saveGame();
+  }
+
+  saveAllPrestigeUpgrades(upgrades: { [key: string]: { currentLevel: number; unlocked: boolean } }): void {
+    this.state.prestigeUpgrades = upgrades;
     this.saveGame();
   }
 

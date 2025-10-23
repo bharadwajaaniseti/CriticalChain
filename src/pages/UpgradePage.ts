@@ -24,6 +24,7 @@ export class UpgradePage {
   private container: HTMLElement;
   private upgrades: Map<string, UpgradeNode> = new Map();
   private quantumCores: number = 0;
+  private prestigeCostReduction: number = 0;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -52,28 +53,38 @@ export class UpgradePage {
         this.upgrades.set(key, upgradeNode);
       }
       
-      this.render();
+      // Calculate prestige cost reduction
+      await this.updatePrestigeBonuses();
+      
+      await this.render();
     } catch (error) {
       console.error('Failed to load upgrades:', error);
       this.container.innerHTML = '<div class="error">Failed to load upgrades</div>';
     }
   }
 
+  private async updatePrestigeBonuses(): Promise<void> {
+    const { prestigeSystem } = await import('../systems/PrestigeSystem');
+    const bonuses = prestigeSystem.calculateBonuses();
+    this.prestigeCostReduction = bonuses.prestigeCostReduction;
+  }
+
   private saveUpgradesToGameState(): void {
-    const state = gameState.getState();
+    // Build the upgrades object
+    const upgradesToSave: { [key: string]: { currentLevel: number; unlocked: boolean } } = {};
     
-    // Save all upgrade progress
     this.upgrades.forEach((node) => {
-      state.prestigeUpgrades[node.id] = {
+      upgradesToSave[node.id] = {
         currentLevel: node.currentLevel,
         unlocked: node.unlocked
       };
     });
     
-    gameState.saveGame();
+    // Save all prestige upgrades using the proper method
+    gameState.saveAllPrestigeUpgrades(upgradesToSave);
   }
 
-  private render(): void {
+  private async render(): Promise<void> {
     const state = gameState.getState();
     const unlockedCount = this.getUnlockedCount();
     const totalNodes = this.upgrades.size;
@@ -109,6 +120,10 @@ export class UpgradePage {
           </div>
         </div>
 
+        <div class="active-bonuses-section" id="active-bonuses">
+          <!-- Active bonuses rendered here -->
+        </div>
+
         <div class="upgrade-content-wrapper">
           <div id="upgrade-tree" class="upgrade-tree-wrapper">
             <!-- Upgrade tree rendered here -->
@@ -117,8 +132,32 @@ export class UpgradePage {
       </div>
     `;
 
+    await this.renderActiveBonuses();
     this.renderUpgradeTree();
     this.setupEventListeners();
+  }
+
+  private async renderActiveBonuses(): Promise<void> {
+    const container = document.getElementById('active-bonuses');
+    if (!container) return;
+
+    const { prestigeSystem } = await import('../systems/PrestigeSystem');
+    const summary = prestigeSystem.getBonusSummary();
+
+    if (summary.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    let html = '<div class="bonuses-list"><h3>⭐ Active Bonuses</h3><div class="bonus-items">';
+    
+    summary.forEach(bonus => {
+      html += `<span class="bonus-item">${bonus}</span>`;
+    });
+    
+    html += '</div></div>';
+    container.innerHTML = html;
   }
 
   private renderUpgradeTree(): void {
@@ -257,8 +296,8 @@ export class UpgradePage {
       });
     }
 
-    // Update quantum cores display
-    setInterval(() => this.updateQuantumCores(), 100);
+    // Update quantum cores display (less frequently to avoid stuttering)
+    setInterval(() => this.updateQuantumCores(), 500);
   }
 
   private showResetConfirmation(): void {
@@ -337,10 +376,9 @@ export class UpgradePage {
   private resetPrestigeUpgrades(): void {
     const totalSpent = this.calculateTotalSpent();
     
-    // Refund quantum cores
-    const state = gameState.getState();
-    state.quantumCores += totalSpent;
-    this.quantumCores = state.quantumCores;
+    // Refund quantum cores using the proper method
+    gameState.addQuantumCores(totalSpent);
+    this.quantumCores = gameState.getState().quantumCores;
     
     // Reset all upgrades to initial state (except root which should be unlocked)
     this.upgrades.forEach((node) => {
@@ -363,7 +401,7 @@ export class UpgradePage {
     
     if (coresEl) {
       const state = gameState.getState();
-      this.quantumCores = state?.quantumCores || 0;
+      this.quantumCores = state.quantumCores || 0;
       coresEl.textContent = this.quantumCores.toString();
       
       if (prestigeEl) {
@@ -387,10 +425,14 @@ export class UpgradePage {
   }
 
   private getUpgradeCost(node: UpgradeNode): number {
-    return Math.floor(node.baseCost * Math.pow(node.costMultiplier, node.currentLevel));
+    const baseCost = Math.floor(node.baseCost * Math.pow(node.costMultiplier, node.currentLevel));
+    
+    // Apply prestige cost reduction from other prestige upgrades
+    // Note: This is a simplified version without async - cost reduction is recalculated in renderUpgradeTree
+    return Math.max(1, Math.floor(baseCost * (1 - this.prestigeCostReduction)));
   }
 
-  private handleUpgradePurchase(upgradeId: string): void {
+  private async handleUpgradePurchase(upgradeId: string): Promise<void> {
     const node = this.upgrades.get(upgradeId);
     if (!node || !node.unlocked || node.currentLevel >= node.maxLevel) {
       audioManager.playSFX(AudioType.SFX_CLICK);
@@ -399,12 +441,8 @@ export class UpgradePage {
 
     const cost = this.getUpgradeCost(node);
     
-    if (this.quantumCores >= cost) {
-      // Deduct cost
-      this.quantumCores -= cost;
-      const state = gameState.getState();
-      state.quantumCores = this.quantumCores;
-      
+    // Try to deduct quantum cores
+    if (gameState.deductQuantumCores(cost)) {
       // Upgrade node
       node.currentLevel++;
       
@@ -416,8 +454,17 @@ export class UpgradePage {
       // Apply upgrade effect
       this.applyUpgradeEffect(node);
       
-      audioManager.playSFX(AudioType.SFX_UPGRADE);
+      // Save upgrades
       this.saveUpgradesToGameState();
+      
+      // Update local copy
+      this.quantumCores = gameState.getState().quantumCores;
+      
+      // Update prestige bonuses (cost reduction and coin multiplier might have changed)
+      await this.updatePrestigeBonuses();
+      await gameState.recalculatePrestigeBonuses();
+      
+      audioManager.playSFX(AudioType.SFX_UPGRADE);
       this.renderUpgradeTree();
     } else {
       audioManager.playSFX(AudioType.SFX_CLICK);
@@ -434,9 +481,17 @@ export class UpgradePage {
   }
 
   private applyUpgradeEffect(node: UpgradeNode): void {
-    // This would apply the actual game effects based on the upgrade
-    // For now, just log the upgrade
-    console.log(`Upgraded ${node.name} to level ${node.currentLevel}`);
+    // Effects are automatically applied through PrestigeSystem.calculateBonuses()
+    // This is called in:
+    // - startFreshRun() for starting resources (clicks, time, coins)
+    // - resetRun() for quantum gain multiplier
+    // - awardCoins() for coin value multiplier
+    // - getUpgradeCost() for prestige cost reduction
+    // 
+    // Special features like auto-prestige, offline progress, game speed, and special atoms
+    // would need to be implemented in their respective systems when those features are added
+    
+    console.log(`[Prestige] Upgraded ${node.name} to level ${node.currentLevel}`);
   }
 
   destroy(): void {

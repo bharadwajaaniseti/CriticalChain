@@ -1901,6 +1901,44 @@ body {
   box-shadow: 0 0 20px rgba(255, 82, 82, 0.4);
 }
 
+.active-bonuses-section {
+  padding: 15px 30px;
+  background: rgba(0, 255, 170, 0.05);
+  border-bottom: 1px solid rgba(0, 255, 170, 0.2);
+}
+
+.bonuses-list h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.bonus-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bonus-item {
+  background: rgba(0, 255, 170, 0.1);
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.bonus-item:hover {
+  background: rgba(0, 255, 170, 0.15);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
+}
+
 .quantum-cores-display {
   display: flex;
   flex-direction: column;
