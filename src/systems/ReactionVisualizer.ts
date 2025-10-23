@@ -1235,6 +1235,65 @@ class ReactionVisualizer {
   }
 
   /**
+   * Debug method: Force spawn a specific special atom type
+   */
+  debugSpawnSpecialAtom(type: 'time' | 'supernova' | 'blackhole'): void {
+    if (this.canvas.width === 0 || this.canvas.height === 0) {
+      console.warn('[VISUALIZER] Canvas not ready');
+      return;
+    }
+
+    const state = gameState.getState();
+    
+    // Spawn in center of screen for visibility
+    const x = this.canvas.width / 2;
+    const y = this.canvas.height / 2;
+    
+    // Base properties
+    const healthLevel = 2; // Medium size for visibility
+    const health = Math.ceil(healthLevel * state.upgrades.atomHealth);
+    const baseRadius = 20;
+    const radius = (baseRadius + (healthLevel - 1) * 8) * state.upgrades.atomSize;
+    const atomLifetime = 600 * state.upgrades.atomLifetime;
+    
+    // Set color based on type
+    let atomColor: string;
+    switch (type) {
+      case 'time':
+        atomColor = '#00FFFF'; // Cyan
+        break;
+      case 'supernova':
+        atomColor = '#FFFFFF'; // White
+        break;
+      case 'blackhole':
+        atomColor = '#9400D3'; // Purple
+        break;
+    }
+    
+    // Very slow drift so it stays visible
+    const speed = 0.2 * state.upgrades.atomSpeed;
+    const angle = Math.random() * Math.PI * 2;
+    
+    this.atoms.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius,
+      health,
+      maxHealth: health,
+      value: healthLevel,
+      color: atomColor,
+      isFissile: true,
+      lifetime: 0,
+      maxLifetime: atomLifetime,
+      specialType: type,
+    });
+    
+    console.log(`[DEBUG] Spawned ${type} atom at center with color ${atomColor}`);
+  }
+
+  /**
    * Reset visualization
    */
   reset(): void {

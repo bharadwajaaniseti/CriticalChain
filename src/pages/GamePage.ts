@@ -7,6 +7,7 @@ import { NavigationManager } from '../systems/NavigationManager';
 import { gameState } from '../systems/GameStateManager';
 import { ReactionVisualizer } from '../systems/ReactionVisualizer';
 import { audioManager, AudioType } from '../systems/AudioManager';
+import { DebugConfig } from '../config/GameConfig';
 
 export class GamePage {
   private container: HTMLElement;
@@ -86,6 +87,15 @@ export class GamePage {
               </div>
             </div>
           </div>
+          
+          <!-- Debug Panel (only shown in test mode) -->
+          <div class="debug-panel" id="debug-panel" style="display: none;">
+            <div class="debug-title">🔬 Debug Controls</div>
+            <button class="debug-btn" id="spawn-time-atom">Spawn Time Atom ⏰</button>
+            <button class="debug-btn" id="spawn-supernova-atom">Spawn Supernova 💥</button>
+            <button class="debug-btn" id="spawn-blackhole-atom">Spawn Black Hole 🌑</button>
+            <button class="debug-btn" id="unlock-all-special">Unlock All Special</button>
+          </div>
         </div>
       </div>
     `;
@@ -98,6 +108,11 @@ export class GamePage {
         audioManager.playSFX(AudioType.SFX_CLICK);
         this.showReturnConfirmation();
       });
+    }
+    
+    // Setup debug panel if test mode is enabled
+    if (DebugConfig.testMode) {
+      this.setupDebugPanel();
     }
   }
 
@@ -112,6 +127,59 @@ export class GamePage {
       }
     };
     window.addEventListener('keydown', this.escapeKeyHandler);
+  }
+
+  private setupDebugPanel(): void {
+    const debugPanel = document.getElementById('debug-panel');
+    if (!debugPanel) return;
+    
+    // Show the debug panel
+    debugPanel.style.display = 'block';
+    
+    // Spawn Time Atom
+    const spawnTimeBtn = document.getElementById('spawn-time-atom');
+    if (spawnTimeBtn) {
+      spawnTimeBtn.addEventListener('click', () => {
+        if (this.visualizer) {
+          this.visualizer.debugSpawnSpecialAtom('time');
+          audioManager.playSFX(AudioType.HOME_UI_SELECT);
+        }
+      });
+    }
+    
+    // Spawn Supernova
+    const spawnSupernovaBtn = document.getElementById('spawn-supernova-atom');
+    if (spawnSupernovaBtn) {
+      spawnSupernovaBtn.addEventListener('click', () => {
+        if (this.visualizer) {
+          this.visualizer.debugSpawnSpecialAtom('supernova');
+          audioManager.playSFX(AudioType.HOME_UI_SELECT);
+        }
+      });
+    }
+    
+    // Spawn Black Hole
+    const spawnBlackholeBtn = document.getElementById('spawn-blackhole-atom');
+    if (spawnBlackholeBtn) {
+      spawnBlackholeBtn.addEventListener('click', () => {
+        if (this.visualizer) {
+          this.visualizer.debugSpawnSpecialAtom('blackhole');
+          audioManager.playSFX(AudioType.HOME_UI_SELECT);
+        }
+      });
+    }
+    
+    // Unlock all special atoms
+    const unlockAllBtn = document.getElementById('unlock-all-special');
+    if (unlockAllBtn) {
+      unlockAllBtn.addEventListener('click', () => {
+        gameState.updateUpgrade('timeAtomsUnlocked', 1);
+        gameState.updateUpgrade('supernovaUnlocked', 1);
+        gameState.updateUpgrade('blackHoleUnlocked', 1);
+        audioManager.playSFX(AudioType.SKILLTREE_PURCHASE);
+        alert('✅ All special atoms unlocked! They will now spawn naturally during gameplay.');
+      });
+    }
   }
 
   private pauseGame(): void {

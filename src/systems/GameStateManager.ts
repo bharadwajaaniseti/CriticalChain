@@ -3,6 +3,8 @@
  * Manages core game state for Critical Chain (Criticality clone)
  */
 
+import { StartingResources, GameSession, DefaultUpgrades } from '../config/GameConfig';
+
 export interface Upgrade {
   id: string;
   name: string;
@@ -232,72 +234,41 @@ class GameStateManager {
       if (saved.upgrades.fissionMastery === undefined) saved.upgrades.fissionMastery = 0;
       
       // Ensure new click system fields exist (backward compatibility)
-      if (saved.clicks === undefined) saved.clicks = 2;
-      if (saved.maxClicks === undefined) saved.maxClicks = 2;
-      if (saved.timeRemaining === undefined) saved.timeRemaining = 10;
-      if (saved.maxTime === undefined) saved.maxTime = 10;
+      if (saved.clicks === undefined) saved.clicks = GameSession.maxClicks;
+      if (saved.maxClicks === undefined) saved.maxClicks = GameSession.maxClicks;
+      if (saved.timeRemaining === undefined) saved.timeRemaining = GameSession.maxTime;
+      if (saved.maxTime === undefined) saved.maxTime = GameSession.maxTime;
       if (saved.gameActive === undefined) saved.gameActive = false;
       if (saved.currentChain === undefined) saved.currentChain = 0;
       if (saved.maxChain === undefined) saved.maxChain = 0;
-      if (saved.rank === undefined) saved.rank = 0;
-      if (saved.score === undefined) saved.score = 0;
+      if (saved.rank === undefined) saved.rank = StartingResources.rank;
+      if (saved.score === undefined) saved.score = StartingResources.score;
       if (saved.metaCurrency === undefined) saved.metaCurrency = 0;
-      if (saved.quantumCores === undefined) saved.quantumCores = 0;
+      if (saved.quantumCores === undefined) saved.quantumCores = StartingResources.quantumCores;
       if (saved.prestigeUpgrades === undefined) saved.prestigeUpgrades = {};
       
       return saved;
     }
 
     const initialState: GameState = {
-      coins: 0,
+      coins: StartingResources.coins,
       coinsThisRound: 0,
       shots: 0,
       time: 0,
-      rank: 0,
+      rank: StartingResources.rank,
       currentChain: 0,
       maxChain: 0,
-      score: 0,
+      score: StartingResources.score,
       metaCurrency: 0,
-      quantumCores: 0,
+      quantumCores: StartingResources.quantumCores,
       prestigeUpgrades: {},
-      clicks: 2,
-      maxClicks: 2,
-      timeRemaining: 10,
-      maxTime: 10,
+      clicks: GameSession.maxClicks,
+      maxClicks: GameSession.maxClicks,
+      timeRemaining: GameSession.maxTime,
+      maxTime: GameSession.maxTime,
       gameActive: false,
       upgrades: {
-        // Neutron stats (default values)
-        neutronSpeed: 1,           // 1x speed
-        neutronLifetime: 1,        // 1x lifetime (1.5 seconds base)
-        neutronSize: 1,            // 1x size
-        neutronCountPlayer: 2,     // 2 neutrons per player click
-        neutronCountAtom: 2,       // 2 neutrons per atom break
-        
-        // Atom stats (default values)
-        atomSpeed: 1,              // 1x speed
-        atomLifetime: 1,           // 1x lifetime (10 seconds base)
-        atomSize: 1,               // 1x size
-        atomSpawnRate: 1,          // 1x spawn rate
-        atomHealth: 1,             // 1x health
-        
-        // Legacy/Special upgrades
-        neutronReflector: 0,
-        pierce: 0,
-        homing: 0,
-        momentum: 0,
-        chainMultiplier: 1,
-        
-        // Critical hit system
-        critChance: 0,
-        critDoublNeutrons: 0,
-        
-        // Shockwave systems
-        atomShockwave: 0,
-        atomShockwaveForce: 1,
-        clickShockwave: 0,
-        clickShockwaveRadius: 1,
-        
-        // Economy upgrades
+        ...DefaultUpgrades,
         baseCoinValue: 0,
         skillCostReduction: 0,
         startingCoins: 0,

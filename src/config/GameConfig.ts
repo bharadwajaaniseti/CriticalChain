@@ -9,7 +9,7 @@ export const GameConfig = {
    */
   STARTING_RESOURCES: {
     coins: 0,
-    quantumCores: 0,
+    quantumCores: 100,
     rank: 0,
     score: 0,
     totalAtomsDestroyed: 0,
@@ -51,8 +51,10 @@ export const GameConfig = {
     neutronLifetime: 1.0,
     neutronSize: 1.0,
     atomSpawnRate: 1.0,
+    atomSpeed: 1.0,
     atomSize: 1.0,
     atomLifetime: 1.0,
+    atomHealth: 1.0,
     chainMultiplier: 1.0,
     pierce: 0,
     homing: 0,
@@ -64,14 +66,14 @@ export const GameConfig = {
     critDoublNeutrons: 0,
     
     // Shockwave Systems
-    atomShockwave: 0,
+    atomShockwave: 90,
     atomShockwaveForce: 1.0,
-    clickShockwave: 0,
+    clickShockwave: 1,
     clickShockwaveRadius: 1.0,
     
     // Economy
-    baseCoinValue: 0,
-    skillCostReduction: 0,
+    baseCoinValue: 1,
+    skillCostReduction: 1,
     startingCoins: 0,
     economyMastery: 0,
     
@@ -90,7 +92,7 @@ export const GameConfig = {
     blackHoleChance: 0,
     blackHolePullRadius: 1.0,
     blackHoleCoins: 0,
-    blackHoleSpawnAtoms: 0,
+    blackHoleSpawnAtoms: 20,
     
     fissionMastery: 0,
   },
@@ -177,6 +179,7 @@ export const GameConfig = {
     showFPS: false,
     godMode: false, // Infinite resources
     skipTutorial: false,
+    testMode: false, // Show debug controls for testing special atoms
   },
 
   /**
