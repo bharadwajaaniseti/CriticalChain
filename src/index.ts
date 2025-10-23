@@ -43,6 +43,7 @@ class CriticalChainGame {
         audioManager.preloadAudio(AudioType.SFX_CLICK),
         audioManager.preloadAudio(AudioType.SFX_REACTION),
         audioManager.preloadAudio(AudioType.SFX_UPGRADE),
+        audioManager.preloadAudio(AudioType.SFX_ATOM_BREAK),
       ]);
 
       // Get app container

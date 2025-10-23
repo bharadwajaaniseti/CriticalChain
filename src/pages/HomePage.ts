@@ -100,26 +100,46 @@ export class HomePage {
   }
 
   private showSettings(): void {
+    const sfxVolume = audioManager.getSFXVolume();
+    const musicVolume = audioManager.getMusicVolume();
+    
     // Create settings overlay
     const overlay = document.createElement('div');
     overlay.className = 'settings-overlay';
     overlay.innerHTML = `
       <div class="settings-panel">
+        <button class="close-btn" id="close-settings">✕</button>
         <h2>⚙️ Settings</h2>
         <div class="settings-content">
+          <div class="setting-section">
+            <h3>Audio</h3>
+            <div class="volume-control">
+              <label class="volume-label">
+                <span class="volume-icon">🔊</span>
+                <span>Sound Effects Volume</span>
+              </label>
+              <div class="volume-slider-container">
+                <input type="range" id="sfx-volume" class="volume-slider" min="0" max="100" value="${sfxVolume * 100}">
+                <span class="volume-value" id="sfx-value">${Math.round(sfxVolume * 100)}%</span>
+              </div>
+            </div>
+            <div class="volume-control">
+              <label class="volume-label">
+                <span class="volume-icon">🎵</span>
+                <span>Music Volume</span>
+              </label>
+              <div class="volume-slider-container">
+                <input type="range" id="music-volume" class="volume-slider" min="0" max="100" value="${musicVolume * 100}">
+                <span class="volume-value" id="music-value">${Math.round(musicVolume * 100)}%</span>
+              </div>
+            </div>
+          </div>
+          
           <div class="setting-section">
             <h3>Game Progress</h3>
             <p class="setting-description">Warning: This will delete all your progress including coins, ranks, quantum cores, and upgrades!</p>
             <button class="danger-btn" id="reset-all-progress">🗑️ Reset All Progress</button>
           </div>
-          
-          <div class="setting-section">
-            <h3>Audio</h3>
-            <p class="setting-description">Audio controls coming soon...</p>
-          </div>
-        </div>
-        <div class="settings-footer">
-          <button class="cancel-btn" id="close-settings">Close</button>
         </div>
       </div>
     `;
@@ -127,22 +147,52 @@ export class HomePage {
     this.container.appendChild(overlay);
 
     // Add event listeners
+    const sfxSlider = document.getElementById('sfx-volume') as HTMLInputElement;
+    const musicSlider = document.getElementById('music-volume') as HTMLInputElement;
+    const sfxValueDisplay = document.getElementById('sfx-value');
+    const musicValueDisplay = document.getElementById('music-value');
+
+    sfxSlider?.addEventListener('input', (e) => {
+      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+      audioManager.setSFXVolume(value);
+      if (sfxValueDisplay) sfxValueDisplay.textContent = `${Math.round(value * 100)}%`;
+      // Play a test sound
+      audioManager.playSFX(AudioType.SFX_CLICK);
+    });
+
+    musicSlider?.addEventListener('input', (e) => {
+      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+      audioManager.setMusicVolume(value);
+      if (musicValueDisplay) musicValueDisplay.textContent = `${Math.round(value * 100)}%`;
+    });
+
     document.getElementById('reset-all-progress')?.addEventListener('click', () => {
       this.showResetConfirmation(overlay);
     });
 
-    document.getElementById('close-settings')?.addEventListener('click', () => {
+    const closeSettings = () => {
       audioManager.playSFX(AudioType.SFX_CLICK);
+      document.removeEventListener('keydown', handleEscape);
       overlay.remove();
-    });
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeSettings();
+      }
+    };
+
+    document.getElementById('close-settings')?.addEventListener('click', closeSettings);
 
     // Close on background click
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
-        audioManager.playSFX(AudioType.SFX_CLICK);
-        overlay.remove();
+        closeSettings();
       }
     });
+
+    // Close on Escape key
+    document.addEventListener('keydown', handleEscape);
   }
 
   private showResetConfirmation(settingsOverlay: HTMLElement): void {

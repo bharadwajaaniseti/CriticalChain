@@ -35,15 +35,28 @@ export interface GameState {
   maxTime: number;
   gameActive: boolean;
   
-  // Upgrades
+  // Upgrades - Comprehensive stats system
   upgrades: {
-    neutronReflector: number;     // % chance to reflect neutrons
-    pierce: number;                // Neutrons can pierce through atoms
-    homing: number;                // Neutrons home towards atoms
-    momentum: number;              // Clicking doesn't reset chain
-    startingNeutrons: number;      // More neutrons per click
-    chainMultiplier: number;       // Chain value multiplier
-    atomSpawnRate: number;         // Faster atom spawning
+    // Neutron stats
+    neutronSpeed: number;              // Speed multiplier for neutrons
+    neutronLifetime: number;           // Lifetime multiplier for neutrons
+    neutronSize: number;               // Size multiplier for neutrons
+    neutronCountPlayer: number;        // Number of neutrons spawned by player click
+    neutronCountAtom: number;          // Number of neutrons spawned when atom breaks
+    
+    // Atom stats
+    atomSpeed: number;                 // Speed multiplier for atoms
+    atomLifetime: number;              // Lifetime multiplier for atoms
+    atomSize: number;                  // Size multiplier for atoms
+    atomSpawnRate: number;             // Atom spawn rate multiplier
+    atomHealth: number;                // Atom health multiplier
+    
+    // Legacy/Special upgrades
+    neutronReflector: number;          // % chance to reflect neutrons
+    pierce: number;                    // Neutrons can pierce through atoms
+    homing: number;                    // Neutrons home towards atoms
+    momentum: number;                  // Clicking doesn't reset chain
+    chainMultiplier: number;           // Chain value multiplier
   };
   
   // Game state
@@ -71,15 +84,40 @@ class GameStateManager {
       // Ensure upgrades exist and have all properties
       if (!saved.upgrades) {
         saved.upgrades = {
+          // Neutron stats (default values)
+          neutronSpeed: 1,           // 1x speed
+          neutronLifetime: 1,        // 1x lifetime (1.5 seconds base)
+          neutronSize: 1,            // 1x size
+          neutronCountPlayer: 2,     // 2 neutrons per player click
+          neutronCountAtom: 2,       // 2 neutrons per atom break
+          
+          // Atom stats (default values)
+          atomSpeed: 1,              // 1x speed
+          atomLifetime: 1,           // 1x lifetime (10 seconds base)
+          atomSize: 1,               // 1x size
+          atomSpawnRate: 1,          // 1x spawn rate
+          atomHealth: 1,             // 1x health
+          
+          // Legacy/Special upgrades
           neutronReflector: 0,
           pierce: 0,
           homing: 0,
           momentum: 0,
-          startingNeutrons: 2,
           chainMultiplier: 1,
-          atomSpawnRate: 1,
         };
       }
+      
+      // Add new properties if missing (backward compatibility)
+      if (saved.upgrades.neutronSpeed === undefined) saved.upgrades.neutronSpeed = 1;
+      if (saved.upgrades.neutronLifetime === undefined) saved.upgrades.neutronLifetime = 1;
+      if (saved.upgrades.neutronSize === undefined) saved.upgrades.neutronSize = 1;
+      if (saved.upgrades.neutronCountPlayer === undefined) saved.upgrades.neutronCountPlayer = 2;
+      if (saved.upgrades.neutronCountAtom === undefined) saved.upgrades.neutronCountAtom = 2;
+      if (saved.upgrades.atomSpeed === undefined) saved.upgrades.atomSpeed = 1;
+      if (saved.upgrades.atomLifetime === undefined) saved.upgrades.atomLifetime = 1;
+      if (saved.upgrades.atomSize === undefined) saved.upgrades.atomSize = 1;
+      if (saved.upgrades.atomSpawnRate === undefined) saved.upgrades.atomSpawnRate = 1;
+      if (saved.upgrades.atomHealth === undefined) saved.upgrades.atomHealth = 1;
       
       // Ensure new click system fields exist (backward compatibility)
       if (saved.clicks === undefined) saved.clicks = 2;
@@ -115,13 +153,26 @@ class GameStateManager {
       maxTime: 10,
       gameActive: false,
       upgrades: {
+        // Neutron stats (default values)
+        neutronSpeed: 1,           // 1x speed
+        neutronLifetime: 1,        // 1x lifetime (1.5 seconds base)
+        neutronSize: 1,            // 1x size
+        neutronCountPlayer: 2,     // 2 neutrons per player click
+        neutronCountAtom: 2,       // 2 neutrons per atom break
+        
+        // Atom stats (default values)
+        atomSpeed: 1,              // 1x speed
+        atomLifetime: 1,           // 1x lifetime (10 seconds base)
+        atomSize: 1,               // 1x size
+        atomSpawnRate: 1,          // 1x spawn rate
+        atomHealth: 1,             // 1x health
+        
+        // Legacy/Special upgrades
         neutronReflector: 0,
         pierce: 0,
         homing: 0,
         momentum: 0,
-        startingNeutrons: 2,  // Start with 2 neutrons per click
         chainMultiplier: 1,
-        atomSpawnRate: 1,
       },
       lastSave: Date.now(),
       gameStartTime: Date.now(),
@@ -139,6 +190,9 @@ class GameStateManager {
     this.state.gameActive = true;
     this.state.clicks = this.state.maxClicks;
     this.state.timeRemaining = this.state.maxTime;
+    // Reset chains at the start of each round
+    this.state.currentChain = 0;
+    this.state.maxChain = 0;
   }
 
   /**
@@ -211,9 +265,12 @@ class GameStateManager {
   }
 
   /**
-   * Reset current chain
+   * Reset current chain (only resets the active chain counter, not the display)
+   * The display shows maxChain which persists through the round
    */
   resetChain(): void {
+    // Don't reset currentChain to 0 anymore, since we want to show the max achieved
+    // Instead, just keep tracking in currentChain for active reactions
     this.state.currentChain = 0;
   }
 
@@ -320,7 +377,7 @@ class GameStateManager {
       try {
         const parsed = JSON.parse(saved) as GameState;
         // Validate that it has the new structure
-        if (!parsed.upgrades || typeof parsed.upgrades.startingNeutrons === 'undefined') {
+        if (!parsed.upgrades || typeof parsed.upgrades.neutronCountPlayer === 'undefined') {
           console.log('[LOAD] Old save format detected, resetting');
           localStorage.removeItem('CriticalChain_Save');
           return null;
@@ -362,13 +419,26 @@ class GameStateManager {
     
     // Reset base upgrades (skill tree) but keep prestige upgrades
     this.state.upgrades = {
+      // Neutron stats (default values)
+      neutronSpeed: 1,
+      neutronLifetime: 1,
+      neutronSize: 1,
+      neutronCountPlayer: 2,
+      neutronCountAtom: 2,
+      
+      // Atom stats (default values)
+      atomSpeed: 1,
+      atomLifetime: 1,
+      atomSize: 1,
+      atomSpawnRate: 1,
+      atomHealth: 1,
+      
+      // Legacy/Special upgrades
       neutronReflector: 0,
       pierce: 0,
       homing: 0,
       momentum: 0,
-      startingNeutrons: 2,
       chainMultiplier: 1,
-      atomSpawnRate: 1,
     };
     
     this.saveGame();
@@ -450,13 +520,26 @@ class GameStateManager {
       maxTime: 10,
       gameActive: false,
       upgrades: {
+        // Neutron stats (default values)
+        neutronSpeed: 1,
+        neutronLifetime: 1,
+        neutronSize: 1,
+        neutronCountPlayer: 2,
+        neutronCountAtom: 2,
+        
+        // Atom stats (default values)
+        atomSpeed: 1,
+        atomLifetime: 1,
+        atomSize: 1,
+        atomSpawnRate: 1,
+        atomHealth: 1,
+        
+        // Legacy/Special upgrades
         neutronReflector: 0,
         pierce: 0,
         homing: 0,
         momentum: 0,
-        startingNeutrons: 2,
         chainMultiplier: 1,
-        atomSpawnRate: 1,
       },
       lastSave: Date.now(),
       gameStartTime: Date.now(),

@@ -5,6 +5,7 @@
  */
 
 import { gameState } from './GameStateManager';
+import { audioManager, AudioType } from './AudioManager';
 
 export interface Neutron {
   x: number;
@@ -27,6 +28,8 @@ export interface Atom {
   value: number;
   color: string;
   isFissile: boolean;  // false = non-fissile (black material)
+  lifetime: number;  // Frames alive (for decay)
+  maxLifetime: number;  // When to decay (based on skill tree)
 }
 
 export interface FloatingText {
@@ -47,6 +50,8 @@ class ReactionVisualizer {
   private lastSpawnTime: number = 0;
   private lastChainResetTime: number = 0;
   private readonly CHAIN_RESET_DELAY = 1000; // Reset chain if no collisions for 1s
+  private clicksDepletedTime: number = 0; // Track when clicks ran out
+  private readonly GRACE_PERIOD = 2000; // 2 second grace period after clicks depleted
 
   constructor(canvasElement: HTMLCanvasElement) {
     this.canvas = canvasElement;
@@ -86,21 +91,35 @@ class ReactionVisualizer {
       return;
     }
 
-    const radius = 20;
+    const state = gameState.getState();
+    
+    // Base radius: 20 pixels, multiplied by upgrade
+    const radius = 20 * state.upgrades.atomSize;
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * 100 + 100;
+    
+    // Base lifetime: 10 seconds (600 frames at 60fps), multiplied by upgrade
+    const atomLifetime = 600 * state.upgrades.atomLifetime;
+    
+    // Base speed: 0.5 pixels/frame, multiplied by upgrade
+    const speed = 0.5 * state.upgrades.atomSpeed;
+    
+    // Health multiplied by upgrade
+    const health = Math.ceil(1 * state.upgrades.atomHealth);
     
     this.atoms.push({
       x: this.canvas.width / 2 + Math.cos(angle) * distance,
       y: this.canvas.height / 2 + Math.sin(angle) * distance,
-      vx: Math.cos(angle) * 0.3,
-      vy: Math.sin(angle) * 0.3,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
       radius,
-      health: 1,
-      maxHealth: 1,
+      health,
+      maxHealth: health,
       value: 1,
       color: '#FF8800',
       isFissile: true,
+      lifetime: 0,
+      maxLifetime: atomLifetime,
     });
     
     console.log(`[VISUALIZER] Spawned center atom, total: ${this.atoms.length}`);
@@ -145,19 +164,25 @@ class ReactionVisualizer {
     }
     
     const state = gameState.getState();
-    const neutronCount = state.upgrades.startingNeutrons;
+    const neutronCount = state.upgrades.neutronCountPlayer;
+    
+    // Base speed: 1 pixel/frame (very slow), multiplied by upgrade
+    const baseSpeed = 1.0 * state.upgrades.neutronSpeed;
+    
+    // Base size: 5 pixels, multiplied by upgrade
+    const neutronSize = 5 * state.upgrades.neutronSize;
     
     // Spawn neutrons in random directions
     for (let i = 0; i < neutronCount; i++) {
       const angle = (Math.PI * 2 * i) / neutronCount + Math.random() * 0.5;
-      const speed = 3 + Math.random();
+      const speed = baseSpeed + (Math.random() * 0.2); // Slight variation
       
       this.neutrons.push({
         x,
         y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        size: 5,
+        size: neutronSize,
         lifetime: 0,
         pierceRemaining: state.upgrades.pierce,
       });
@@ -186,6 +211,28 @@ class ReactionVisualizer {
     // Safety check
     if (!state || !state.upgrades) {
       return;
+    }
+
+    // Track when clicks are depleted
+    if (state.clicks <= 0 && this.clicksDepletedTime === 0) {
+      this.clicksDepletedTime = now;
+      console.log('[VISUALIZER] Clicks depleted, starting grace period');
+    }
+    
+    // Reset grace period if clicks are refilled
+    if (state.clicks > 0) {
+      this.clicksDepletedTime = 0;
+    }
+
+    // Check for early end: no clicks left, no neutrons, grace period expired, and time remaining
+    if (state.gameActive && state.clicks <= 0 && this.neutrons.length === 0 && state.timeRemaining > 0) {
+      const gracePeriodElapsed = this.clicksDepletedTime > 0 && (now - this.clicksDepletedTime >= this.GRACE_PERIOD);
+      
+      if (gracePeriodElapsed) {
+        console.log('[VISUALIZER] Early end: no clicks, no neutrons, and grace period expired');
+        gameState.endGame();
+        this.clicksDepletedTime = 0; // Reset for next round
+      }
     }
 
     // Spawn atoms periodically (keep at least 3 atoms on screen)
@@ -239,8 +286,13 @@ class ReactionVisualizer {
       else if (rand < 0.5 && rank >= 1) healthLevel = 2;
     }
 
-    const health = healthLevel;
-    const radius = 15 + (healthLevel - 1) * 10;
+    // Health multiplied by upgrade
+    const health = Math.ceil(healthLevel * state.upgrades.atomHealth);
+    
+    // Base radius: 20 pixels, scaled by health and upgrade
+    const baseRadius = 20;
+    const radius = (baseRadius + (healthLevel - 1) * 8) * state.upgrades.atomSize;
+    
     const value = healthLevel;
     
     // Determine if fissile (at rank 1+, some atoms are non-fissile)
@@ -250,7 +302,8 @@ class ReactionVisualizer {
     const side = Math.floor(Math.random() * 4);
     let x, y, vx, vy;
     
-    const speed = 0.8;
+    // Base speed: 0.5 pixels/frame (slow), multiplied by upgrade
+    const speed = 0.5 * state.upgrades.atomSpeed;
     switch (side) {
       case 0: // Top
         x = Math.random() * this.canvas.width;
@@ -277,6 +330,9 @@ class ReactionVisualizer {
         vy = (Math.random() - 0.5) * speed;
     }
 
+    // Base lifetime: 10 seconds (600 frames at 60fps), multiplied by upgrade
+    const atomLifetime = 600 * state.upgrades.atomLifetime;
+    
     this.atoms.push({
       x,
       y,
@@ -288,6 +344,8 @@ class ReactionVisualizer {
       value,
       color: isFissile ? this.getAtomColor(healthLevel) : '#000000',
       isFissile,
+      lifetime: 0,
+      maxLifetime: atomLifetime,
     });
     
     console.log(`[VISUALIZER] Spawned atom at (${x.toFixed(0)}, ${y.toFixed(0)}), radius: ${radius}, health: ${health}, total atoms: ${this.atoms.length}`);
@@ -352,9 +410,11 @@ class ReactionVisualizer {
       }
 
       // Remove if out of bounds or too old
+      // Base lifetime: 1.5 seconds (90 frames at 60fps), multiplied by upgrade
+      const maxLifetime = 90 * state.upgrades.neutronLifetime;
       return neutron.x >= 0 && neutron.x <= this.canvas.width &&
              neutron.y >= 0 && neutron.y <= this.canvas.height &&
-             neutron.lifetime < 600; // 10 seconds
+             neutron.lifetime < maxLifetime;
     });
   }
 
@@ -383,14 +443,85 @@ class ReactionVisualizer {
    * Update atoms
    */
   private updateAtoms(): void {
+    // Update lifetime and position
     this.atoms = this.atoms.filter(atom => {
       atom.x += atom.vx;
       atom.y += atom.vy;
+      atom.lifetime++;
+
+      // Remove if lifetime expired
+      if (atom.lifetime >= atom.maxLifetime) {
+        return false;
+      }
 
       // Remove if out of bounds
       return atom.x >= -atom.radius * 2 && atom.x <= this.canvas.width + atom.radius * 2 &&
              atom.y >= -atom.radius * 2 && atom.y <= this.canvas.height + atom.radius * 2;
     });
+
+    // Check atom-atom collisions for physics
+    this.checkAtomCollisions();
+  }
+
+  /**
+   * Check and handle atom-atom collisions with physics
+   */
+  private checkAtomCollisions(): void {
+    for (let i = 0; i < this.atoms.length; i++) {
+      for (let j = i + 1; j < this.atoms.length; j++) {
+        const atom1 = this.atoms[i];
+        const atom2 = this.atoms[j];
+
+        const dx = atom2.x - atom1.x;
+        const dy = atom2.y - atom1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDist = atom1.radius + atom2.radius;
+
+        if (distance < minDist) {
+          // Collision detected - apply elastic collision physics
+          
+          // Normalize collision vector
+          const nx = dx / distance;
+          const ny = dy / distance;
+
+          // Separate atoms to prevent overlap
+          const overlap = minDist - distance;
+          const separateX = (overlap / 2) * nx;
+          const separateY = (overlap / 2) * ny;
+          
+          atom1.x -= separateX;
+          atom1.y -= separateY;
+          atom2.x += separateX;
+          atom2.y += separateY;
+
+          // Calculate relative velocity
+          const dvx = atom1.vx - atom2.vx;
+          const dvy = atom1.vy - atom2.vy;
+
+          // Calculate relative velocity in collision normal direction
+          const dvn = dvx * nx + dvy * ny;
+
+          // Only resolve if atoms are moving towards each other
+          if (dvn > 0) {
+            // Apply impulse (simplified elastic collision)
+            // Assuming equal mass for simplicity
+            const impulse = dvn;
+
+            atom1.vx -= impulse * nx;
+            atom1.vy -= impulse * ny;
+            atom2.vx += impulse * nx;
+            atom2.vy += impulse * ny;
+
+            // Add some damping to reduce energy over time
+            const damping = 0.95;
+            atom1.vx *= damping;
+            atom1.vy *= damping;
+            atom2.vx *= damping;
+            atom2.vy *= damping;
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -424,30 +555,28 @@ class ReactionVisualizer {
             gameState.awardCoins(atom.value);
             this.showFloatingText(`+${atom.value} x${gameState.getState().currentChain}`, atom.x, atom.y, '#00FF66');
             
-            // Emit 2 neutrons
-            const angle1 = Math.random() * Math.PI * 2;
-            const angle2 = angle1 + Math.PI + (Math.random() - 0.5);
-            const speed = 3;
-
-            this.neutrons.push({
-              x: atom.x,
-              y: atom.y,
-              vx: Math.cos(angle1) * speed,
-              vy: Math.sin(angle1) * speed,
-              size: 5,
-              lifetime: 0,
-              pierceRemaining: gameState.getState().upgrades.pierce,
-            });
-
-            this.neutrons.push({
-              x: atom.x,
-              y: atom.y,
-              vx: Math.cos(angle2) * speed,
-              vy: Math.sin(angle2) * speed,
-              size: 5,
-              lifetime: 0,
-              pierceRemaining: gameState.getState().upgrades.pierce,
-            });
+            // Play atom break sound
+            audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+            
+            // Emit neutrons based on upgrade
+            const currentState = gameState.getState();
+            const neutronCount = currentState.upgrades.neutronCountAtom;
+            const baseSpeed = 1.0 * currentState.upgrades.neutronSpeed;
+            const neutronSize = 5 * currentState.upgrades.neutronSize;
+            
+            for (let k = 0; k < neutronCount; k++) {
+              const angle = (Math.PI * 2 * k) / neutronCount + Math.random() * 0.3;
+              
+              this.neutrons.push({
+                x: atom.x,
+                y: atom.y,
+                vx: Math.cos(angle) * baseSpeed,
+                vy: Math.sin(angle) * baseSpeed,
+                size: neutronSize,
+                lifetime: 0,
+                pierceRemaining: currentState.upgrades.pierce,
+              });
+            }
 
             this.atoms.splice(j, 1);
           }
@@ -496,11 +625,30 @@ class ReactionVisualizer {
   private drawAtom(atom: Atom): void {
     const ctx = this.ctx;
     
+    // Calculate lifetime percentage
+    const lifetimePercent = atom.lifetime / atom.maxLifetime;
+    
+    // Fade effect when close to decay (last 20% of lifetime)
+    if (lifetimePercent > 0.8) {
+      const fadeAmount = (lifetimePercent - 0.8) / 0.2;
+      ctx.globalAlpha = 1 - (fadeAmount * 0.5); // Fade to 50% opacity
+    }
+    
     // Main circle
     ctx.fillStyle = atom.color;
     ctx.beginPath();
     ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
     ctx.fill();
+
+    // Lifetime indicator ring (show when < 30% life remaining)
+    if (lifetimePercent > 0.7) {
+      ctx.strokeStyle = lifetimePercent > 0.85 ? '#ff0000' : '#ffaa00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const lifeRemaining = 1 - lifetimePercent;
+      ctx.arc(atom.x, atom.y, atom.radius + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lifeRemaining);
+      ctx.stroke();
+    }
 
     // Health indicator
     if (atom.isFissile && atom.health < atom.maxHealth) {
@@ -520,6 +668,9 @@ class ReactionVisualizer {
       ctx.textBaseline = 'middle';
       ctx.fillText(`×${atom.health}`, atom.x, atom.y);
     }
+    
+    // Reset alpha
+    ctx.globalAlpha = 1;
   }
 
   /**
@@ -527,6 +678,15 @@ class ReactionVisualizer {
    */
   private drawNeutron(neutron: Neutron): void {
     const ctx = this.ctx;
+    const state = gameState.getState();
+    const maxLifetime = 90 * state.upgrades.neutronLifetime;
+    const lifetimePercent = neutron.lifetime / maxLifetime;
+    
+    // Fade effect when close to decay (last 20% of lifetime)
+    if (lifetimePercent > 0.8) {
+      const fadeAmount = (lifetimePercent - 0.8) / 0.2;
+      ctx.globalAlpha = 1 - (fadeAmount * 0.6); // Fade more than atoms
+    }
     
     ctx.fillStyle = '#ff00ff';
     ctx.shadowColor = '#ff00ff';
@@ -548,6 +708,7 @@ class ReactionVisualizer {
     
     ctx.restore();
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
 
   /**

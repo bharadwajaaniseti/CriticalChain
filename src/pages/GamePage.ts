@@ -13,12 +13,16 @@ export class GamePage {
   private visualizer: ReactionVisualizer | null = null;
   private updateInterval: number = 0;
   private gameOverShown: boolean = false;
+  private isPaused: boolean = false;
+  private pausedTimeRemaining: number = 0;
+  private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.render();
     this.setupEventListeners();
     this.initializeGame();
+    this.setupKeyboardListeners();
   }
 
   private render(): void {
@@ -95,6 +99,30 @@ export class GamePage {
     }
   }
 
+  private setupKeyboardListeners(): void {
+    this.escapeKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (!this.isPaused) {
+          this.pauseGame();
+          this.showPauseMenu();
+        }
+      }
+    };
+    window.addEventListener('keydown', this.escapeKeyHandler);
+  }
+
+  private pauseGame(): void {
+    this.isPaused = true;
+    // Don't modify game state, just set pause flag
+    console.log('[GamePage] Game paused');
+  }
+
+  private resumeGame(): void {
+    this.isPaused = false;
+    console.log('[GamePage] Game resumed');
+  }
+
   private showReturnConfirmation(): void {
     const state = gameState.getState();
     const metaEarned = state.rank; // Meta currency = rank level
@@ -137,6 +165,93 @@ export class GamePage {
     });
   }
 
+  private showPauseMenu(): void {
+    const sfxVolume = audioManager.getSFXVolume();
+    const musicVolume = audioManager.getMusicVolume();
+    
+    // Create pause overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'settings-overlay';
+    overlay.innerHTML = `
+      <div class="settings-panel">
+        <button class="close-btn" id="resume-game">✕</button>
+        <h2>⏸️ Game Paused</h2>
+        <div class="settings-content">
+          <div class="setting-section">
+            <h3>Audio</h3>
+            <div class="volume-control">
+              <label class="volume-label">
+                <span class="volume-icon">🔊</span>
+                <span>Sound Effects Volume</span>
+              </label>
+              <div class="volume-slider-container">
+                <input type="range" id="sfx-volume-pause" class="volume-slider" min="0" max="100" value="${sfxVolume * 100}">
+                <span class="volume-value" id="sfx-value-pause">${Math.round(sfxVolume * 100)}%</span>
+              </div>
+            </div>
+            <div class="volume-control">
+              <label class="volume-label">
+                <span class="volume-icon">🎵</span>
+                <span>Music Volume</span>
+              </label>
+              <div class="volume-slider-container">
+                <input type="range" id="music-volume-pause" class="volume-slider" min="0" max="100" value="${musicVolume * 100}">
+                <span class="volume-value" id="music-value-pause">${Math.round(musicVolume * 100)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.container.appendChild(overlay);
+
+    // Add event listeners
+    const sfxSlider = document.getElementById('sfx-volume-pause') as HTMLInputElement;
+    const musicSlider = document.getElementById('music-volume-pause') as HTMLInputElement;
+    const sfxValueDisplay = document.getElementById('sfx-value-pause');
+    const musicValueDisplay = document.getElementById('music-value-pause');
+
+    sfxSlider?.addEventListener('input', (e) => {
+      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+      audioManager.setSFXVolume(value);
+      if (sfxValueDisplay) sfxValueDisplay.textContent = `${Math.round(value * 100)}%`;
+      // Play a test sound
+      audioManager.playSFX(AudioType.SFX_CLICK);
+    });
+
+    musicSlider?.addEventListener('input', (e) => {
+      const value = parseInt((e.target as HTMLInputElement).value) / 100;
+      audioManager.setMusicVolume(value);
+      if (musicValueDisplay) musicValueDisplay.textContent = `${Math.round(value * 100)}%`;
+    });
+
+    const resumeGameHandler = () => {
+      audioManager.playSFX(AudioType.SFX_CLICK);
+      this.resumeGame();
+      document.removeEventListener('keydown', handleEscape);
+      overlay.remove();
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        resumeGameHandler();
+      }
+    };
+
+    document.getElementById('resume-game')?.addEventListener('click', resumeGameHandler);
+
+    // Close on background click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        resumeGameHandler();
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', handleEscape);
+  }
+
   private initializeGame(): void {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     if (canvas) {
@@ -154,6 +269,9 @@ export class GamePage {
   }
 
   private updateTimer(): void {
+    // Don't update time if paused
+    if (this.isPaused) return;
+    
     // Update time by 0.05 seconds (50ms)
     gameState.updateTime(0.05);
   }
@@ -162,8 +280,9 @@ export class GamePage {
     const state = gameState.getState();
     if (!state) return;
 
-    // Check if game ended (only show once)
-    if (!state.gameActive && (state.timeRemaining <= 0 || state.clicks <= 0) && !this.gameOverShown) {
+    // Check if game ended (only show once and not while paused)
+    // Game is ended by ReactionVisualizer when time runs out OR (clicks are 0 AND no neutrons remain)
+    if (!this.isPaused && !state.gameActive && !this.gameOverShown) {
       this.gameOverShown = true;
       this.showGameOver();
     }
@@ -174,11 +293,11 @@ export class GamePage {
       coinsValue.textContent = state.coins.toString();
     }
 
-    // Update chain
+    // Update chain (show max chain reached this round)
     const chainValue = document.getElementById('chain-value');
     if (chainValue) {
-      chainValue.textContent = `×${state.currentChain}`;
-      if (state.currentChain > 5) {
+      chainValue.textContent = `×${state.maxChain}`;
+      if (state.maxChain > 5) {
         chainValue.classList.add('pulse');
       } else {
         chainValue.classList.remove('pulse');
@@ -297,6 +416,9 @@ export class GamePage {
     }
     if (this.visualizer) {
       this.visualizer.reset();
+    }
+    if (this.escapeKeyHandler) {
+      window.removeEventListener('keydown', this.escapeKeyHandler);
     }
   }
 }
