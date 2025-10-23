@@ -2,7 +2,7 @@
 
 
 
-A nuclear chain reaction idle/incremental game inspired by **Criticality** by mechabit. Click to trigger atomic reactions, build massive chains, and unlock powerful upgrades through a dynamic skill tree system.A chain-reaction-based idle incremental game built with TypeScript, Canvas, and Web Audio API.
+A nuclear chain reaction idle/incremental game. Click to trigger atomic reactions, build massive chains, and unlock powerful upgrades through a dynamic skill tree system.A chain-reaction-based idle incremental game built with TypeScript, Canvas, and Web Audio API.
 
 
 
