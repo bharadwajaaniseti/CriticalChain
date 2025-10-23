@@ -90,6 +90,9 @@ export class UpgradePage {
     const totalNodes = this.upgrades.size;
     this.quantumCores = state.quantumCores || 0;
     
+    // Debug: Check metaCurrency when rendering upgrade page
+    console.log(`[UpgradePage] Rendering - metaCurrency: ${state.metaCurrency}, quantumCores: ${state.quantumCores}`);
+    
     this.container.innerHTML = `
       <div class="upgrade-page">
         <div class="upgrade-header">

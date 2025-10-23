@@ -17,6 +17,7 @@ export class GamePage {
   private pausedTimeRemaining: number = 0;
   private escapeKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   private gameStarted: boolean = false;
+  private playerHasInteracted: boolean = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -277,10 +278,11 @@ export class GamePage {
     // Start the game session
     gameState.startGame();
     
-    // Mark game as started after a brief delay to ensure proper initialization
+    // Mark game as started after initialization completes
+    // Wait longer to ensure atoms have spawned and game is fully ready
     setTimeout(() => {
       this.gameStarted = true;
-    }, 100);
+    }, 1000);
 
     // Start update loop (20 FPS for HUD updates)
     this.updateInterval = window.setInterval(() => {
@@ -301,17 +303,26 @@ export class GamePage {
     const state = gameState.getState();
     if (!state) return;
 
+    // Track player interaction (if clicks have decreased, player has clicked)
+    if (!this.playerHasInteracted && state.clicks < state.maxClicks) {
+      this.playerHasInteracted = true;
+      console.log('[GamePage] Player interaction detected');
+    }
+
     // Check if game ended (only show once, not while paused, and only after game has actually started)
     // Game is ended by ReactionVisualizer when time runs out OR (clicks are 0 AND no neutrons remain)
-    if (this.gameStarted && !this.isPaused && !state.gameActive && !this.gameOverShown) {
+    // Also require that player has interacted OR time has actually decreased
+    const gameHasProgressed = this.playerHasInteracted || state.timeRemaining < state.maxTime;
+    
+    if (this.gameStarted && gameHasProgressed && !this.isPaused && !state.gameActive && !this.gameOverShown) {
       this.gameOverShown = true;
       this.showGameOver();
     }
 
-    // Update coins
+    // Update coins (show only THIS round's coins during gameplay)
     const coinsValue = document.getElementById('coins-value');
     if (coinsValue) {
-      coinsValue.textContent = state.coins.toString();
+      coinsValue.textContent = state.coinsThisRound.toString();
     }
 
     // Update chain (show current active chain)
@@ -384,10 +395,13 @@ export class GamePage {
     const overlay = document.createElement('div');
     overlay.className = 'game-over-overlay';
     const state = gameState.getState();
-    const coins = state.coins ?? 0;
+    const baseCoins = state.coinsThisRound ?? 0; // Show only THIS round's coins
     const maxChain = state.maxChain ?? 0;
     const rank = state.rank ?? 0;
     const reason = state.clicks <= 0 ? 'Out of Clicks!' : 'Time\'s Up!';
+    
+    // Apply chain multiplier to display final coins for THIS round
+    const finalCoins = maxChain > 0 ? Math.floor(baseCoins * maxChain) : baseCoins;
     
     overlay.innerHTML = `
       <div class="game-over-panel">
@@ -395,7 +409,7 @@ export class GamePage {
         <div class="game-over-stats">
           <div class="stat-item">
             <span class="stat-label">Coins Earned</span>
-            <span class="stat-value">💰 ${coins}</span>
+            <span class="stat-value">💰 ${finalCoins}${maxChain > 1 ? ` (${baseCoins} × ${maxChain})` : ''}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Max Chain</span>
@@ -422,6 +436,7 @@ export class GamePage {
       // Reset game state and restart
       this.gameOverShown = false;
       this.gameStarted = false;
+      this.playerHasInteracted = false;
       
       // Reset visualizer to clear atoms and neutrons
       if (this.visualizer) {
@@ -429,10 +444,10 @@ export class GamePage {
       }
       
       gameState.startGame();
-      // Re-enable game started flag after brief delay
+      // Re-enable game started flag after initialization
       setTimeout(() => {
         this.gameStarted = true;
-      }, 100);
+      }, 1000);
     });
 
     document.getElementById('skill-tree-btn')?.addEventListener('click', () => {

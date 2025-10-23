@@ -280,13 +280,11 @@ class ReactionVisualizer {
     const timeSinceLastCollision = now - this.lastCollisionTime;
     const currentChain = gameState.getState().currentChain;
     
-    // Only check for chain reset if:
-    // - No neutrons are active
-    // - A collision happened relatively recently (within last 5 seconds)
-    // - Chain timeout has elapsed since that collision
+    // Chain persists through the entire round - no mid-game resets
+    // Chain will only reset when starting a new game/round
+    // Log for debugging if needed
     if (this.neutrons.length === 0 && currentChain > 0 && timeSinceLastCollision > this.CHAIN_TIMEOUT && timeSinceLastCollision < 5000) {
-      console.log(`[VISUALIZER] 🔗 Chain ended at x${currentChain}: all neutrons expired naturally (${timeSinceLastCollision}ms since last collision, timeout: ${this.CHAIN_TIMEOUT}ms)`);
-      gameState.resetChain();
+      console.log(`[VISUALIZER] 🔗 Chain at x${currentChain}: all neutrons expired but chain persists (${timeSinceLastCollision}ms since last collision)`);
     }
   }
 

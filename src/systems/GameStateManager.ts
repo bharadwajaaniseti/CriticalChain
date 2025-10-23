@@ -16,6 +16,7 @@ export interface Upgrade {
 export interface GameState {
   // Core resources
   coins: number;
+  coinsThisRound: number; // Track coins earned in current round (before chain multiplier)
   shots: number;
   time: number;
   rank: number;
@@ -237,6 +238,7 @@ class GameStateManager {
 
     const initialState: GameState = {
       coins: 0,
+      coinsThisRound: 0,
       shots: 0,
       time: 0,
       rank: 0,
@@ -323,6 +325,8 @@ class GameStateManager {
     // Reset chains at the start of each round
     this.state.currentChain = 0;
     this.state.maxChain = 0;
+    // Reset coins earned this round
+    this.state.coinsThisRound = 0;
   }
 
   /**
@@ -330,6 +334,23 @@ class GameStateManager {
    */
   endGame(): void {
     this.state.gameActive = false;
+    
+    // Apply chain multiplier to THIS ROUND's coins and add to total
+    if (this.state.maxChain > 0 && this.state.coinsThisRound > 0) {
+      const coinsBeforeMultiplier = this.state.coinsThisRound;
+      const multipliedCoins = Math.floor(this.state.coinsThisRound * this.state.maxChain);
+      
+      // Add the multiplied coins to total
+      this.state.coins += multipliedCoins;
+      
+      console.log(`[GameState] 🔗 Round End - Chain Multiplier Applied: ${coinsBeforeMultiplier} coins × ${this.state.maxChain} chain = ${multipliedCoins} coins (total: ${this.state.coins})`);
+      this.saveGame(); // Save immediately so coins persist
+    } else if (this.state.coinsThisRound > 0) {
+      // No chain multiplier, just add the coins
+      this.state.coins += this.state.coinsThisRound;
+      console.log(`[GameState] Round End - No chain multiplier: ${this.state.coinsThisRound} coins added (total: ${this.state.coins})`);
+      this.saveGame();
+    }
   }
 
   /**
@@ -340,9 +361,14 @@ class GameStateManager {
       this.state.clicks--;
       this.state.shots++;
       
-      // DON'T reset chain here - let it be managed by the Criticality-style chain logic
-      // Chain will only reset when all neutrons naturally expire without collisions
-      // This allows the chain counter to properly track all atoms destroyed in a reaction
+      // Reset chain on click (default behavior)
+      // This can be prevented with the "momentum" skill tree upgrade
+      if (this.state.upgrades.momentum === 0) {
+        this.state.currentChain = 0;
+        console.log('[GameState] Chain reset on click (momentum upgrade not active)');
+      } else {
+        console.log('[GameState] Chain preserved on click (momentum upgrade active)');
+      }
       
       return true;
     }
@@ -377,7 +403,8 @@ class GameStateManager {
   recordShot(): void {
     this.state.shots++;
     
-    // Reset chain if momentum upgrade not active
+    // Reset chain on click (default behavior)
+    // This can be prevented later with the "momentum" skill tree upgrade
     if (this.state.upgrades.momentum === 0) {
       this.state.currentChain = 0;
     }
@@ -400,9 +427,8 @@ class GameStateManager {
    * The display shows maxChain which persists through the round
    */
   resetChain(): void {
-    // Don't reset currentChain to 0 anymore, since we want to show the max achieved
-    // Instead, just keep tracking in currentChain for active reactions
-    this.state.currentChain = 0;
+    // Don't reset chain during gameplay - let it accumulate through the round
+    // Chain only resets when starting a new game/round
   }
 
   /**
@@ -415,7 +441,9 @@ class GameStateManager {
     
     const chainBonus = 1 + (this.state.currentChain * 0.1 * this.state.upgrades.chainMultiplier);
     const coins = Math.floor(atomValue * chainBonus * prestigeMultiplier);
-    this.state.coins += coins;
+    
+    // Add only to coinsThisRound during gameplay (will be multiplied by chain at round end and added to total coins)
+    this.state.coinsThisRound += coins;
     this.state.score += coins;
     this.state.totalAtomsDestroyed++;
     
@@ -582,7 +610,11 @@ class GameStateManager {
     const bonuses = prestigeSystem.calculateBonuses();
     this.prestigeCoinMultiplier = bonuses.coinValueMultiplier;
     
-    // Reset run-specific stats only (keep quantum cores, prestige upgrades, totalAtomsDestroyed, and highestRank)
+    // Debug: Check metaCurrency before any changes
+    console.log(`[GameState] startFreshRun - metaCurrency BEFORE: ${this.state.metaCurrency}`);
+    
+    // Reset run-specific stats (including coins, rank, and skill tree)
+    // Keep persistent progression: quantum cores, prestige upgrades, totalAtomsDestroyed, metaCurrency, and highestRank
     // Apply prestige bonuses to starting resources
     this.state.coins = bonuses.startingCoins;
     this.state.shots = 0;
@@ -595,7 +627,8 @@ class GameStateManager {
     this.state.maxClicks = 2 + bonuses.startingClicks;
     this.state.timeRemaining = 10 + bonuses.startingTime;
     this.state.maxTime = 10 + bonuses.startingTime;
-    this.state.gameActive = false;
+    // Don't set gameActive here - let startGame() handle it when GamePage loads
+    // this.state.gameActive = false;
     // Don't reset totalAtomsDestroyed - it's a lifetime stat
     
     // Reset base upgrades (skill tree) but keep prestige upgrades
@@ -657,8 +690,11 @@ class GameStateManager {
     const { skillTreeManager } = await import('./SkillTreeManager');
     skillTreeManager.resetSkillTree();
     
+    // Debug: Check metaCurrency after changes
+    console.log(`[GameState] startFreshRun - metaCurrency AFTER: ${this.state.metaCurrency}`);
+    
     this.saveGame();
-    console.log('[GameState] Fresh run started - coins, rank, and skill tree reset');
+    console.log('[GameState] Fresh run started - coins, rank, and skill tree reset (metaCurrency preserved)');
   }
 
   /**
@@ -670,6 +706,8 @@ class GameStateManager {
     const { prestigeSystem } = await import('./PrestigeSystem');
     const bonuses = prestigeSystem.calculateBonuses();
     
+    // Note: Chain multiplier already applied in endGame() when round ended
+    
     // Calculate meta currency and quantum cores based on rank
     const metaEarned = this.state.rank;
     const baseQuantumEarned = Math.floor(this.state.rank / 2); // 1 quantum core per 2 ranks
@@ -678,13 +716,14 @@ class GameStateManager {
     this.state.metaCurrency += metaEarned;
     this.state.quantumCores += quantumEarned;
     
-    // Reset run-specific stats (keep metaCurrency, quantumCores, highestRank, and totalAtomsDestroyed)
+    // Reset run-specific stats (keep coins, metaCurrency, quantumCores, highestRank, and totalAtomsDestroyed)
+    const preservedCoins = this.state.coins;
     const preservedMetaCurrency = this.state.metaCurrency;
     const preservedQuantumCores = this.state.quantumCores;
     const preservedHighestRank = this.state.highestRank;
     const preservedTotalAtomsDestroyed = this.state.totalAtomsDestroyed;
     
-    this.state.coins = 0;
+    this.state.coins = preservedCoins; // Keep coins accumulated across rounds
     this.state.shots = 0;
     this.state.time = 0;
     this.state.rank = 0;
@@ -705,6 +744,7 @@ class GameStateManager {
     
     this.saveGame();
     console.log(`[GameState] Run reset - Earned ${metaEarned} meta currency (total: ${this.state.metaCurrency}) and ${quantumEarned} quantum cores (total: ${this.state.quantumCores})`);
+    console.log(`[GameState] Coins preserved: ${this.state.coins}`);
     
     return metaEarned;
   }
@@ -746,6 +786,7 @@ class GameStateManager {
     // Reset to fresh state
     this.state = {
       coins: 0,
+      coinsThisRound: 0,
       shots: 0,
       time: 0,
       rank: 0,
