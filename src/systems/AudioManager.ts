@@ -3,6 +3,8 @@
  * Handles all sound effects and music
  */
 
+import { AudioVolumes } from '../config/GameConfig';
+
 export enum AudioType {
   SFX_CLICK = 'sfx_click',
   SFX_REACTION = 'sfx_reaction',
@@ -37,21 +39,21 @@ class AudioManager {
   
   // Individual volume controls for each audio type
   private volumes: Map<AudioType, number> = new Map([
-    [AudioType.SFX_CLICK, 0.5],
-    [AudioType.SFX_REACTION, 0.5],
-    [AudioType.SFX_UPGRADE, 0.5],
-    [AudioType.SFX_ATOM_BREAK, 0.5],
-    [AudioType.MUSIC_IDLE, 0.3],
-    [AudioType.MUSIC_REACTION, 0.3],
-    [AudioType.HOME_MUSIC_BG, 0.3],
-    [AudioType.HOME_UI_SELECT, 0.5],
-    [AudioType.SKILLTREE_PURCHASE, 0.5],
-    [AudioType.SKILLTREE_HOVER, 0.5],
+    [AudioType.SFX_CLICK, AudioVolumes.sfxClick],
+    [AudioType.SFX_REACTION, AudioVolumes.sfxReaction],
+    [AudioType.SFX_UPGRADE, AudioVolumes.sfxUpgrade],
+    [AudioType.SFX_ATOM_BREAK, AudioVolumes.sfxAtomBreak],
+    [AudioType.MUSIC_IDLE, AudioVolumes.musicIdle],
+    [AudioType.MUSIC_REACTION, AudioVolumes.musicReaction],
+    [AudioType.HOME_MUSIC_BG, AudioVolumes.homeMusicBg],
+    [AudioType.HOME_UI_SELECT, AudioVolumes.homeUiSelect],
+    [AudioType.SKILLTREE_PURCHASE, AudioVolumes.skilltreePurchase],
+    [AudioType.SKILLTREE_HOVER, AudioVolumes.skilltreeHover],
   ]);
   
   // Legacy support - master volumes
-  private musicVolume: number = 0.3;
-  private sfxVolume: number = 0.5;
+  private musicVolume: number = AudioVolumes.musicIdle;
+  private sfxVolume: number = AudioVolumes.sfxClick;
 
   constructor() {
     this.loadVolumeSettings();
