@@ -1,0 +1,21 @@
+{
+  "name": "critical-chain-game",
+  "version": "1.0.0",
+  "description": "A chain-reaction-based idle incremental game",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.7"
+  }
+}
