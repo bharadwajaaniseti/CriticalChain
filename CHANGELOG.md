@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Visual states (locked/unlocked/purchased/maxed)
   
 - **Meta Progression**
-  - Meta currency (⭐) system
+  - Meta currency system
   - Earned based on rank when resetting
   - Persistent across all sessions
   - Displayed on home screen

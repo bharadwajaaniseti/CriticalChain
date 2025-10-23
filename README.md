@@ -38,7 +38,7 @@ A nuclear chain reaction idle/incremental game. Click to trigger atomic reaction
 
 - **🔄 Session-Based Upgrades**: Skills persist during play session, reset on return to menu
 
-- **⭐ Meta Currency**: Earn permanent meta currency based on your rank when resetting```
+- ** Meta Currency**: Earn permanent meta currency based on your rank when resetting```
 
 - **🎯 Smart Tooltips**: Context-aware tooltips with viewport edge detectionCriticalChain/
 
@@ -192,7 +192,7 @@ EP Gain = baseNodeEP × TotalNodes × CM × RS × randomVariance
 
 4. **Skill Tree** → Upgrade skills (session-only)```
 
-5. **Play Again** → Continue with upgrades OR Return to Menu (reset + earn meta ⭐)
+5. **Play Again** → Continue with upgrades OR Return to Menu (reset + earn meta )
 
 **Passive Gain (per second):**
 
@@ -212,7 +212,7 @@ Passive EP = ARU_Level × CurrentEP × 0.01
 
 - Base upgrade that unlocks efficiency and spread branches
 
-#### Meta Currency (⭐)
+#### Meta Currency ()
 
 - Earned when resetting (1 meta per rank level)### Efficiency Branch
 
@@ -392,7 +392,7 @@ Skills are defined in `assets/data/skilltree.json`:## 🎨 UI Layout
 - **Manual Save**: On skill purchase, drag end, zoom
 - **Data Stored**:
   - Coins, rank, score, stats
-  - Meta currency (⭐)
+  - Meta currency
   - Skill tree camera position (pan/zoom)
   - Game configuration
 

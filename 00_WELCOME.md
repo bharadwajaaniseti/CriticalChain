@@ -106,7 +106,7 @@ C:/CriticalChain/
 │   └── audio/                      (5 files)
 │
 ├── 📖 Documentation
-│   ├── START_HERE.md              ⭐ BEGIN HERE
+│   ├── START_HERE.md               BEGIN HERE
 │   ├── README.md
 │   ├── INDEX.md
 │   ├── QUICK_REFERENCE.md
@@ -355,14 +355,14 @@ dist/
 
 ##  HIGHLIGHTS
 
-⭐ **Complete** - Not a template, a working game  
-⭐ **Professional** - Production-ready code  
-⭐ **Documented** - 15,000+ words of guides  
-⭐ **Optimized** - 60 FPS performance  
-⭐ **Extensible** - Easy to customize  
-⭐ **Modern** - Latest web APIs  
-⭐ **Typed** - Full TypeScript  
-⭐ **Responsive** - Mobile + desktop  
+ **Complete** - Not a template, a working game  
+ **Professional** - Production-ready code  
+ **Documented** - 15,000+ words of guides  
+ **Optimized** - 60 FPS performance  
+ **Extensible** - Easy to customize  
+ **Modern** - Latest web APIs  
+ **Typed** - Full TypeScript  
+ **Responsive** - Mobile + desktop  
 
 ---
 
