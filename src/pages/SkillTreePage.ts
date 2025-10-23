@@ -6,17 +6,18 @@
 import { NavigationManager } from '../systems/NavigationManager';
 import { gameState } from '../systems/GameStateManager';
 import { audioManager, AudioType } from '../systems/AudioManager';
+import { skillTreeManager } from '../systems/SkillTreeManager';
 
 interface SkillNodeData {
   id: string;
   name: string;
   description: string;
+  icon: string;
   currentLevel: number;
   maxLevel: number;
   baseCost: number;
   costMultiplier: number;
   unlocked: boolean;
-  connectedNodes: string[];
 }
 
 interface SkillNode extends SkillNodeData {
@@ -24,6 +25,7 @@ interface SkillNode extends SkillNodeData {
   y?: number;
   radius?: number;
   depth?: number;
+  connectedNodes?: string[];
 }
 
 export class SkillTreePage {
@@ -68,11 +70,49 @@ export class SkillTreePage {
   private initializeSkills(): void {
     if (!this.skillTreeData) return;
 
+    // Initialize all skills with connectedNodes array
     Object.values(this.skillTreeData).forEach(skillData => {
-      this.skills.set(skillData.id, { ...skillData });
+      this.skills.set(skillData.id, { ...skillData, connectedNodes: [] });
     });
 
+    // Define parent-child relationships (same as SkillTreeManager)
+    this.defineConnections();
     this.calculateDepths();
+  }
+
+  private defineConnections(): void {
+    const connections: { [key: string]: string[] } = {
+      'root': ['neutron_basics', 'atom_basics', 'chain_basics', 'resource_basics'],
+      'neutron_basics': ['neutron_count_1', 'neutron_speed_1', 'neutron_lifetime_1', 'neutron_size_1'],
+      'neutron_count_1': ['neutron_count_2'],
+      'neutron_count_2': ['neutron_count_3'],
+      'neutron_speed_1': ['neutron_speed_2'],
+      'neutron_speed_2': ['neutron_pierce'],
+      'neutron_lifetime_1': ['neutron_lifetime_2'],
+      'neutron_lifetime_2': ['neutron_homing'],
+      'atom_basics': ['atom_spawn_rate_1', 'atom_size_1', 'atom_lifetime_1', 'atom_neutron_count_1'],
+      'atom_spawn_rate_1': ['atom_spawn_rate_2'],
+      'atom_neutron_count_1': ['atom_neutron_count_2'],
+      'atom_neutron_count_2': ['atom_neutron_count_3'],
+      'chain_basics': ['chain_multiplier_1', 'neutron_reflector'],
+      'chain_multiplier_1': ['chain_multiplier_2'],
+      'chain_multiplier_2': ['chain_multiplier_3', 'momentum'],
+      'resource_basics': ['max_clicks_1', 'max_time_1'],
+      'max_clicks_1': ['max_clicks_2'],
+      'max_clicks_2': ['max_clicks_3'],
+      'max_clicks_3': ['max_clicks_4'],
+      'max_time_1': ['max_time_2'],
+      'max_time_2': ['max_time_3'],
+      'max_time_3': ['max_time_4'],
+    };
+
+    // Apply connections
+    Object.entries(connections).forEach(([parentId, children]) => {
+      const parent = this.skills.get(parentId);
+      if (parent) {
+        parent.connectedNodes = children;
+      }
+    });
   }
 
   /**
@@ -121,32 +161,29 @@ export class SkillTreePage {
       visited.add(id);
       skill.depth = depth;
 
-      skill.connectedNodes.forEach(connectedId => {
-        if (!visited.has(connectedId)) {
-          queue.push({ id: connectedId, depth: depth + 1 });
-        }
-      });
+      if (skill.connectedNodes) {
+        skill.connectedNodes.forEach(connectedId => {
+          if (!visited.has(connectedId)) {
+            queue.push({ id: connectedId, depth: depth + 1 });
+          }
+        });
+      }
     }
   }
 
-  private getSkillIcon(id: string): string {
+  private getSkillIcon(skill: SkillNode): string {
+    // Use icon from JSON if available
+    if (skill.icon) return skill.icon;
+    
+    // Fallback icons based on id
+    const id = skill.id;
     if (id === 'root') return '⚛️';
-    if (id.includes('branch_initiator')) return '🔺';
-    if (id.includes('branch_photon')) return '⭐';
-    if (id.includes('branch_reaction')) return '🔗';
-    if (id.includes('branch_economy')) return '💰';
+    if (id.includes('neutron')) return '�';
+    if (id.includes('atom')) return '⚡';
+    if (id.includes('chain')) return '�';
     if (id.includes('click')) return '👆';
-    if (id.includes('photon')) return '💫';
-    if (id.includes('chain')) return '🔗';
     if (id.includes('time')) return '⏱️';
-    if (id.includes('coin')) return '💰';
-    if (id.includes('atom')) return '🔴';
-    if (id.includes('fire')) return '🔥';
-    if (id.includes('ice')) return '❄️';
-    if (id.includes('black_hole')) return '🌑';
-    if (id.includes('quantum')) return '🌀';
-    if (id.includes('supernova')) return '💥';
-    if (id.includes('multiplier')) return '✖️';
+    if (id.includes('ultimate')) return '🌟';
     return '⭐';
   }
 
@@ -235,6 +272,8 @@ export class SkillTreePage {
 
     // Draw connections only for visible nodes
     visibleNodes.forEach(skill => {
+      if (!skill.connectedNodes) return;
+      
       skill.connectedNodes.forEach(connectedId => {
         const connected = this.skills.get(connectedId);
         if (!connected || !visibleNodes.has(connected) || !skill.x || !skill.y || !connected.x || !connected.y) return;
@@ -306,7 +345,7 @@ export class SkillTreePage {
       skill.radius = nodeRadius;
 
       // Icon
-      const icon = this.getSkillIcon(skill.id);
+      const icon = this.getSkillIcon(skill);
       const fontSize = nodeRadius * 0.9;
       ctx.font = `${fontSize}px Arial`;
       ctx.textAlign = 'center';
@@ -351,7 +390,7 @@ export class SkillTreePage {
 
       // If current node is purchased (use effective level), show its connected nodes
       const effectiveLevel = this.getEffectiveLevel(current.id);
-      if (effectiveLevel > 0) {
+      if (effectiveLevel > 0 && current.connectedNodes) {
         current.connectedNodes.forEach(connectedId => {
           const connected = this.skills.get(connectedId);
           if (connected && !visible.has(connected)) {
@@ -368,49 +407,122 @@ export class SkillTreePage {
   private calculateOptimizedLayout(): void {
     if (!this.canvas) return;
 
-    // Use a much larger virtual canvas for better spacing
-    const virtualWidth = 3000;
-    const virtualHeight = 3000;
-    const centerX = virtualWidth / 2;
-    const centerY = virtualHeight / 2;
-
-    const depthGroups = new Map<number, SkillNode[]>();
-    let maxDepth = 0;
-
-    this.skills.forEach(skill => {
-      const depth = skill.depth ?? 0;
-      maxDepth = Math.max(maxDepth, depth);
+    // Fixed positions for all nodes to prevent any overlap
+    const positions: { [key: string]: { x: number; y: number } } = {
+      // Root node
+      'root': { x: 200, y: 2500 },
       
-      if (!depthGroups.has(depth)) {
-        depthGroups.set(depth, []);
+      // Path unlocks (column 1) - spread out more vertically
+      'neutron_basics': { x: 700, y: 400 },
+      'atom_basics': { x: 700, y: 1400 },
+      'chain_basics': { x: 700, y: 2400 },
+      'resource_basics': { x: 700, y: 3400 },
+      'economy_basics': { x: 700, y: 4400 },
+      'special_atom_basics': { x: 700, y: 5400 },
+      
+      // Neutron path (rows 1-4)
+      'neutron_count_1': { x: 1200, y: 150 },
+      'neutron_count_2': { x: 1700, y: 150 },
+      'neutron_count_3': { x: 2200, y: 150 },
+      
+      'neutron_speed_1': { x: 1200, y: 300 },
+      'neutron_speed_2': { x: 1700, y: 300 },
+      'neutron_pierce': { x: 2200, y: 300 },
+      
+      'neutron_lifetime_1': { x: 1200, y: 450 },
+      'neutron_lifetime_2': { x: 1700, y: 450 },
+      'neutron_homing': { x: 2200, y: 450 },
+      
+      'neutron_size_1': { x: 1200, y: 600 },
+      
+      // Critical neutron system
+      'critical_neutron_unlock': { x: 1200, y: 800 },
+      'critical_neutron_chance_1': { x: 1700, y: 750 },
+      'critical_neutron_effect_1': { x: 1700, y: 900 },
+      
+      // Atom path
+      'atom_spawn_rate_1': { x: 1200, y: 1200 },
+      'atom_spawn_rate_2': { x: 1700, y: 1200 },
+      
+      'atom_size_1': { x: 1200, y: 1350 },
+      
+      'atom_lifetime_1': { x: 1200, y: 1500 },
+      
+      'atom_neutron_count_1': { x: 1200, y: 1650 },
+      'atom_neutron_count_2': { x: 1700, y: 1650 },
+      'atom_neutron_count_3': { x: 2200, y: 1650 },
+      
+      // Atom shockwave system
+      'atom_shockwave_unlock': { x: 1200, y: 1850 },
+      'atom_shockwave_force_1': { x: 1700, y: 1850 },
+      
+      // Chain path
+      'chain_multiplier_1': { x: 1200, y: 2200 },
+      'chain_multiplier_2': { x: 1700, y: 2200 },
+      'chain_multiplier_3': { x: 2200, y: 2200 },
+      
+      'momentum': { x: 1700, y: 2400 },
+      'neutron_reflector': { x: 1200, y: 2600 },
+      
+      // Resource path
+      'max_clicks_1': { x: 1200, y: 3200 },
+      'max_clicks_2': { x: 1700, y: 3200 },
+      'max_clicks_3': { x: 2200, y: 3200 },
+      'max_clicks_4': { x: 2700, y: 3200 },
+      
+      'max_time_1': { x: 1200, y: 3400 },
+      'max_time_2': { x: 1700, y: 3400 },
+      'max_time_3': { x: 2200, y: 3400 },
+      'max_time_4': { x: 2700, y: 3400 },
+      
+      // Click shockwave system
+      'click_shockwave_unlock': { x: 1200, y: 3650 },
+      'click_shockwave_radius_1': { x: 1700, y: 3650 },
+      
+      // Economy path
+      'base_coin_value_1': { x: 1200, y: 4200 },
+      'base_coin_value_2': { x: 1700, y: 4200 },
+      
+      'skill_cost_reduction_1': { x: 1200, y: 4400 },
+      
+      'starting_coins_1': { x: 1200, y: 4600 },
+      
+      // Special atoms path - Time atoms
+      'unlock_time_atoms': { x: 1200, y: 5200 },
+      'time_atom_chance_1': { x: 1700, y: 5100 },
+      'time_atom_value_1': { x: 1700, y: 5300 },
+      
+      // Special atoms path - Supernova
+      'unlock_supernova_atoms': { x: 1200, y: 5500 },
+      'supernova_atom_chance_1': { x: 1700, y: 5400 },
+      'supernova_atom_neutrons_1': { x: 1700, y: 5600 },
+      
+      // Special atoms path - Black Hole
+      'unlock_black_hole_atoms': { x: 1200, y: 5800 },
+      'black_hole_atom_chance_1': { x: 1700, y: 5700 },
+      'black_hole_pull_radius_1': { x: 1700, y: 5900 },
+      
+      // Ultimates (far right column)
+      'ultimate_neutron': { x: 3200, y: 600 },
+      'ultimate_atom': { x: 3200, y: 1500 },
+      'ultimate_chain': { x: 3200, y: 2400 },
+      'ultimate_resource': { x: 3200, y: 3400 },
+      'ultimate_economy': { x: 3200, y: 4400 },
+      'ultimate_fission': { x: 3200, y: 5500 },
+    };
+
+    // Apply positions
+    this.skills.forEach((skill, id) => {
+      const pos = positions[id];
+      if (pos) {
+        skill.x = pos.x;
+        skill.y = pos.y;
+      } else {
+        // Fallback for any missing nodes
+        console.warn(`[SkillTree] No position defined for ${id}`);
+        skill.x = 500;
+        skill.y = 500;
       }
-      depthGroups.get(depth)!.push(skill);
-    });
-
-    // Much larger spacing between rings
-    const baseRadius = 150;
-    const radiusIncrement = 280; // Increased spacing between levels
-
-    depthGroups.forEach((skillsAtDepth, depth) => {
-      const radius = depth === 0 ? 0 : baseRadius + (depth * radiusIncrement);
-      const nodeCount = skillsAtDepth.length;
-      
-      // Add spacing buffer based on node count
-      const angleStep = (Math.PI * 2) / nodeCount;
-      
-      // Offset angle for better distribution
-      const angleOffset = depth * 0.3;
-
-      skillsAtDepth.forEach((skill, index) => {
-        if (depth === 0) {
-          skill.x = centerX;
-          skill.y = centerY;
-        } else {
-          const angle = (index * angleStep) + angleOffset;
-          skill.x = centerX + Math.cos(angle) * radius;
-          skill.y = centerY + Math.sin(angle) * radius;
-        }
-      });
     });
   }
 
@@ -428,16 +540,21 @@ export class SkillTreePage {
       this.scale = savedCamera.scale;
       console.log('[SkillTree] Restored camera:', savedCamera);
     } else {
-      // First time - center on root node
-      const root = this.skills.get('root');
-      if (root && root.x !== undefined && root.y !== undefined && this.canvas) {
-        this.offsetX = this.canvas.width / 2 - root.x * this.scale;
-        this.offsetY = this.canvas.height / 2 - root.y * this.scale;
-        console.log('[SkillTree] Centered on root:', { rootX: root.x, rootY: root.y, offsetX: this.offsetX, offsetY: this.offsetY });
-        
-        // Save initial position
-        this.saveCameraPosition();
-      }
+      // First time - center on the middle of the visible tree
+      // Tree spans roughly from x:200 to x:3200, y:150 to y:5900
+      const treeCenterX = 1700; // Middle of tree
+      const treeCenterY = 3000; // Middle of tree
+      
+      // Start with smaller scale to see full tree
+      this.scale = 0.3;
+      
+      this.offsetX = this.canvas.width / 2 - treeCenterX * this.scale;
+      this.offsetY = this.canvas.height / 2 - treeCenterY * this.scale;
+      
+      console.log('[SkillTree] Centered on tree overview:', { scale: this.scale });
+      
+      // Save initial position
+      this.saveCameraPosition();
     }
   }
 
@@ -659,7 +776,7 @@ export class SkillTreePage {
 
     this.tooltip.innerHTML = `
       <div class="tooltip-header">
-        <span class="tooltip-icon">${this.getSkillIcon(skill.id)}</span>
+        <span class="tooltip-icon">${this.getSkillIcon(skill)}</span>
         <span class="tooltip-name">${skill.name}</span>
       </div>
       <p class="tooltip-description">${skill.description}</p>
@@ -718,6 +835,307 @@ export class SkillTreePage {
     return Math.floor(skill.baseCost * Math.pow(skill.costMultiplier, skill.currentLevel));
   }
 
+  /**
+   * Apply skill effects to game state
+   */
+  private applySkillEffect(skillId: string, totalLevel: number): void {
+    // Helper to get total levels across multiple skills
+    const getTotalLevels = (skillIds: string[]): number => {
+      return skillIds.reduce((sum, id) => sum + this.getEffectiveLevel(id), 0);
+    };
+    
+    switch (skillId) {
+      // Path unlocks (no game effect, just unlock connected nodes)
+      case 'neutron_basics':
+      case 'atom_basics':
+      case 'chain_basics':
+      case 'resource_basics':
+      case 'economy_basics':
+      case 'special_atom_basics':
+        // These are just unlock nodes, no direct effect
+        break;
+
+      // Neutron count upgrades
+      case 'neutron_count_1':
+      case 'neutron_count_2':
+      case 'neutron_count_3':
+        const neutronCount = 2 + getTotalLevels(['neutron_count_1', 'neutron_count_2', 'neutron_count_3']);
+        gameState.updateUpgrade('neutronCountPlayer', neutronCount);
+        break;
+
+      // Neutron speed upgrades
+      case 'neutron_speed_1':
+      case 'neutron_speed_2':
+        const speedLevels = getTotalLevels(['neutron_speed_1', 'neutron_speed_2']);
+        const neutronSpeed = 1 + speedLevels * 0.1;
+        gameState.updateUpgrade('neutronSpeed', neutronSpeed);
+        break;
+
+      // Neutron lifetime upgrades
+      case 'neutron_lifetime_1':
+      case 'neutron_lifetime_2':
+        const lifetimeLevels = getTotalLevels(['neutron_lifetime_1', 'neutron_lifetime_2']);
+        const neutronLifetime = 1 + lifetimeLevels * 0.2;
+        gameState.updateUpgrade('neutronLifetime', neutronLifetime);
+        break;
+
+      // Neutron size
+      case 'neutron_size_1':
+        const neutronSize = 1 + totalLevel * 0.15;
+        gameState.updateUpgrade('neutronSize', neutronSize);
+        break;
+
+      // Pierce
+      case 'neutron_pierce':
+        const pierce = totalLevel * 5;
+        gameState.updateUpgrade('pierce', pierce);
+        break;
+
+      // Homing
+      case 'neutron_homing':
+        gameState.updateUpgrade('homing', totalLevel);
+        break;
+
+      // Atom spawn rate
+      case 'atom_spawn_rate_1':
+      case 'atom_spawn_rate_2':
+        const spawnLevels = getTotalLevels(['atom_spawn_rate_1', 'atom_spawn_rate_2']);
+        const atomSpawnRate = 1 + spawnLevels * 0.1;
+        gameState.updateUpgrade('atomSpawnRate', atomSpawnRate);
+        break;
+
+      // Atom size
+      case 'atom_size_1':
+        const atomSize = 1 + totalLevel * 0.15;
+        gameState.updateUpgrade('atomSize', atomSize);
+        break;
+
+      // Atom lifetime
+      case 'atom_lifetime_1':
+        const atomLifetime = 1 + totalLevel * 0.25;
+        gameState.updateUpgrade('atomLifetime', atomLifetime);
+        break;
+
+      // Atom neutron count
+      case 'atom_neutron_count_1':
+      case 'atom_neutron_count_2':
+      case 'atom_neutron_count_3':
+        const neutronCountAtom = 2 + getTotalLevels(['atom_neutron_count_1', 'atom_neutron_count_2', 'atom_neutron_count_3']);
+        gameState.updateUpgrade('neutronCountAtom', neutronCountAtom);
+        break;
+
+      // Chain multiplier
+      case 'chain_multiplier_1':
+      case 'chain_multiplier_2':
+      case 'chain_multiplier_3':
+        const chainLevels = getTotalLevels(['chain_multiplier_1', 'chain_multiplier_2', 'chain_multiplier_3']);
+        const chainMultiplier = 1 + chainLevels * 0.2;
+        gameState.updateUpgrade('chainMultiplier', chainMultiplier);
+        break;
+
+      // Momentum
+      case 'momentum':
+        gameState.updateUpgrade('momentum', totalLevel);
+        break;
+
+      // Reflector
+      case 'neutron_reflector':
+        const reflector = totalLevel * 10;
+        gameState.updateUpgrade('neutronReflector', reflector);
+        break;
+
+      // Max clicks
+      case 'max_clicks_1':
+      case 'max_clicks_2':
+      case 'max_clicks_3':
+      case 'max_clicks_4':
+        const clickLevels = getTotalLevels(['max_clicks_1', 'max_clicks_2', 'max_clicks_3', 'max_clicks_4']);
+        const maxClicks = 2 + clickLevels;
+        gameState.updateResourceCaps(maxClicks, undefined);
+        break;
+
+      // Max time
+      case 'max_time_1':
+      case 'max_time_2':
+      case 'max_time_3':
+      case 'max_time_4':
+        const timeLevels = getTotalLevels(['max_time_1', 'max_time_2', 'max_time_3', 'max_time_4']);
+        const maxTime = 10 + timeLevels * 2;
+        gameState.updateResourceCaps(undefined, maxTime);
+        break;
+
+      // Ultimate Neutron
+      case 'ultimate_neutron':
+        if (totalLevel > 0) {
+          const currentNeutronCount = gameState.getState().upgrades.neutronCountPlayer;
+          const currentNeutronSpeed = gameState.getState().upgrades.neutronSpeed;
+          gameState.updateUpgrade('neutronCountPlayer', currentNeutronCount + 2);
+          gameState.updateUpgrade('neutronSpeed', currentNeutronSpeed * 1.5);
+          console.log(`[SkillTree] Applied ultimate_neutron bonuses`);
+        }
+        break;
+
+      // Ultimate Atom
+      case 'ultimate_atom':
+        if (totalLevel > 0) {
+          const currentAtomNeutrons = gameState.getState().upgrades.neutronCountAtom;
+          const currentAtomSpawn = gameState.getState().upgrades.atomSpawnRate;
+          gameState.updateUpgrade('neutronCountAtom', currentAtomNeutrons + 2);
+          gameState.updateUpgrade('atomSpawnRate', currentAtomSpawn * 1.5);
+          console.log(`[SkillTree] Applied ultimate_atom bonuses`);
+        }
+        break;
+
+      // Ultimate Chain
+      case 'ultimate_chain':
+        if (totalLevel > 0) {
+          const currentChainMult = gameState.getState().upgrades.chainMultiplier;
+          gameState.updateUpgrade('chainMultiplier', currentChainMult + 1.0);
+          gameState.updateUpgrade('momentum', 1);
+          console.log(`[SkillTree] Applied ultimate_chain bonuses`);
+        }
+        break;
+
+      // Ultimate Resource
+      case 'ultimate_resource':
+        if (totalLevel > 0) {
+          const currentMaxClicks = gameState.getState().maxClicks;
+          const currentMaxTime = gameState.getState().maxTime;
+          gameState.updateResourceCaps(currentMaxClicks + 2, currentMaxTime + 5);
+          console.log(`[SkillTree] Applied ultimate_resource bonuses`);
+        }
+        break;
+
+      // ===== CRITICAL HIT SYSTEM =====
+      case 'critical_neutron_unlock':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('critChance', 5); // Base 5% crit chance
+        }
+        break;
+
+      case 'critical_neutron_chance_1':
+        const critChance = 5 + totalLevel * 1; // 5% base + 1% per level
+        gameState.updateUpgrade('critChance', critChance);
+        break;
+
+      case 'critical_neutron_effect_1':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('critDoublNeutrons', 1);
+        }
+        break;
+
+      // ===== SHOCKWAVE SYSTEMS =====
+      case 'atom_shockwave_unlock':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('atomShockwave', 1);
+        }
+        break;
+
+      case 'atom_shockwave_force_1':
+        const shockwaveForce = 1 + totalLevel * 0.1;
+        gameState.updateUpgrade('atomShockwaveForce', shockwaveForce);
+        break;
+
+      case 'click_shockwave_unlock':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('clickShockwave', 1);
+        }
+        break;
+
+      case 'click_shockwave_radius_1':
+        const clickRadius = 1 + totalLevel * 0.1;
+        gameState.updateUpgrade('clickShockwaveRadius', clickRadius);
+        break;
+
+      // ===== ECONOMY SYSTEM =====
+      case 'base_coin_value_1':
+        const coinValue1 = totalLevel * 1; // +1 coin per level
+        gameState.updateUpgrade('baseCoinValue', coinValue1);
+        break;
+
+      case 'base_coin_value_2':
+        const coinValue2 = getTotalLevels(['base_coin_value_1']) * 1 + totalLevel * 2;
+        gameState.updateUpgrade('baseCoinValue', coinValue2);
+        break;
+
+      case 'skill_cost_reduction_1':
+        const costReduction = totalLevel * 1; // 1% per level
+        gameState.updateUpgrade('skillCostReduction', costReduction);
+        break;
+
+      case 'starting_coins_1':
+        const startCoins = totalLevel * 50; // +50 coins per level
+        gameState.updateUpgrade('startingCoins', startCoins);
+        break;
+
+      case 'ultimate_economy':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('economyMastery', 1);
+        }
+        break;
+
+      // ===== SPECIAL ATOM TYPES =====
+      // Time Atoms
+      case 'unlock_time_atoms':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('timeAtomsUnlocked', 1);
+        }
+        break;
+
+      case 'time_atom_chance_1':
+        const timeChance = totalLevel * 0.5; // 0.5% per level
+        gameState.updateUpgrade('timeAtomChance', timeChance);
+        break;
+
+      case 'time_atom_value_1':
+        const timeBonus = 0.5 + totalLevel * 0.25; // 0.5s base + 0.25s per level
+        gameState.updateUpgrade('timeAtomBonus', timeBonus);
+        break;
+
+      // Supernova Atoms
+      case 'unlock_supernova_atoms':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('supernovaUnlocked', 1);
+        }
+        break;
+
+      case 'supernova_atom_chance_1':
+        const supernovaChance = totalLevel * 0.2; // 0.2% per level
+        gameState.updateUpgrade('supernovaChance', supernovaChance);
+        break;
+
+      case 'supernova_atom_neutrons_1':
+        const supernovaNeutrons = 10 + totalLevel * 2; // 10 base + 2 per level
+        gameState.updateUpgrade('supernovaNeutrons', supernovaNeutrons);
+        break;
+
+      // Black Hole Atoms (fissile explosive ones)
+      case 'unlock_black_hole_atoms':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('blackHoleUnlocked', 1);
+        }
+        break;
+
+      case 'black_hole_atom_chance_1':
+        const blackHoleChance = totalLevel * 0.1; // 0.1% per level
+        gameState.updateUpgrade('blackHoleChance', blackHoleChance);
+        break;
+
+      case 'black_hole_pull_radius_1':
+        const blackHoleRadius = 1 + totalLevel * 0.1; // +10% per level
+        gameState.updateUpgrade('blackHolePullRadius', blackHoleRadius);
+        break;
+
+      // Ultimate Fission
+      case 'ultimate_fission':
+        if (totalLevel > 0) {
+          gameState.updateUpgrade('fissionMastery', 1);
+          // 2x spawn rates and 50% more effective is applied in ReactionVisualizer
+        }
+        break;
+    }
+  }
+
   private purchaseSkill(skillId: string): void {
     const skill = this.skills.get(skillId);
     if (!skill) return;
@@ -743,13 +1161,16 @@ export class SkillTreePage {
       this.sessionSkills.set(skillId, session);
 
       // Unlock connected nodes if this is first purchase
-      if (effectiveLevel === 0) {
+      if (effectiveLevel === 0 && skill.connectedNodes) {
         skill.connectedNodes.forEach(connectedId => {
           const sessionConnected = this.sessionSkills.get(connectedId) ?? { currentLevel: 0, unlocked: false };
           sessionConnected.unlocked = true;
           this.sessionSkills.set(connectedId, sessionConnected);
         });
       }
+
+      // Apply the skill effect directly to game state
+      this.applySkillEffect(skillId, this.getEffectiveLevel(skillId));
 
       // Update UI
       const coinsDisplay = document.getElementById('coins-value');
@@ -761,7 +1182,7 @@ export class SkillTreePage {
       audioManager.playSFX(AudioType.SFX_UPGRADE);
       gameState.saveGame();
       
-      console.log(`[SkillTree] Purchased ${skillId} (session level: ${session.currentLevel}, effective level: ${this.getEffectiveLevel(skillId)})`);
+      console.log(`[SkillTree] Purchased ${skillId} - New effective level: ${this.getEffectiveLevel(skillId)}, Applied to game state`);
     }
   }
 

@@ -57,6 +57,37 @@ export interface GameState {
     homing: number;                    // Neutrons home towards atoms
     momentum: number;                  // Clicking doesn't reset chain
     chainMultiplier: number;           // Chain value multiplier
+    
+    // Critical hit system
+    critChance: number;                // % chance for critical neutrons
+    critDoublNeutrons: number;         // 1 = critical hits spawn 2x neutrons from atoms
+    
+    // Shockwave systems
+    atomShockwave: number;             // 1 = broken atoms release shockwave
+    atomShockwaveForce: number;        // Multiplier for atom shockwave force
+    clickShockwave: number;            // 1 = clicks create explosion
+    clickShockwaveRadius: number;      // Multiplier for click shockwave radius
+    
+    // Economy upgrades
+    baseCoinValue: number;             // Bonus coins per atom break
+    skillCostReduction: number;        // % reduction in skill costs
+    startingCoins: number;             // Bonus coins at start of each run
+    economyMastery: number;            // 1 = gain +1% coins per 10 atoms broken
+    
+    // Special atom types
+    timeAtomsUnlocked: number;         // 1 = time atoms can spawn
+    timeAtomChance: number;            // % chance for time atoms
+    timeAtomBonus: number;             // Bonus time granted by time atoms
+    
+    supernovaUnlocked: number;         // 1 = supernova atoms can spawn
+    supernovaChance: number;           // % chance for supernova atoms
+    supernovaNeutrons: number;         // Bonus neutrons from supernova atoms
+    
+    blackHoleUnlocked: number;         // 1 = black hole atoms can spawn (fissile ones that explode)
+    blackHoleChance: number;           // % chance for black hole atoms
+    blackHolePullRadius: number;       // Multiplier for black hole pull radius
+    
+    fissionMastery: number;            // 1 = special atoms 2x spawn and 50% more effective
   };
   
   // Game state
@@ -104,6 +135,37 @@ class GameStateManager {
           homing: 0,
           momentum: 0,
           chainMultiplier: 1,
+          
+          // Critical hit system
+          critChance: 0,
+          critDoublNeutrons: 0,
+          
+          // Shockwave systems
+          atomShockwave: 0,
+          atomShockwaveForce: 1,
+          clickShockwave: 0,
+          clickShockwaveRadius: 1,
+          
+          // Economy upgrades
+          baseCoinValue: 0,
+          skillCostReduction: 0,
+          startingCoins: 0,
+          economyMastery: 0,
+          
+          // Special atom types
+          timeAtomsUnlocked: 0,
+          timeAtomChance: 0,
+          timeAtomBonus: 0.5,
+          
+          supernovaUnlocked: 0,
+          supernovaChance: 0,
+          supernovaNeutrons: 10,
+          
+          blackHoleUnlocked: 0,
+          blackHoleChance: 0,
+          blackHolePullRadius: 1,
+          
+          fissionMastery: 0,
         };
       }
       
@@ -118,6 +180,28 @@ class GameStateManager {
       if (saved.upgrades.atomSize === undefined) saved.upgrades.atomSize = 1;
       if (saved.upgrades.atomSpawnRate === undefined) saved.upgrades.atomSpawnRate = 1;
       if (saved.upgrades.atomHealth === undefined) saved.upgrades.atomHealth = 1;
+      
+      // New upgrade properties (backward compatibility)
+      if (saved.upgrades.critChance === undefined) saved.upgrades.critChance = 0;
+      if (saved.upgrades.critDoublNeutrons === undefined) saved.upgrades.critDoublNeutrons = 0;
+      if (saved.upgrades.atomShockwave === undefined) saved.upgrades.atomShockwave = 0;
+      if (saved.upgrades.atomShockwaveForce === undefined) saved.upgrades.atomShockwaveForce = 1;
+      if (saved.upgrades.clickShockwave === undefined) saved.upgrades.clickShockwave = 0;
+      if (saved.upgrades.clickShockwaveRadius === undefined) saved.upgrades.clickShockwaveRadius = 1;
+      if (saved.upgrades.baseCoinValue === undefined) saved.upgrades.baseCoinValue = 0;
+      if (saved.upgrades.skillCostReduction === undefined) saved.upgrades.skillCostReduction = 0;
+      if (saved.upgrades.startingCoins === undefined) saved.upgrades.startingCoins = 0;
+      if (saved.upgrades.economyMastery === undefined) saved.upgrades.economyMastery = 0;
+      if (saved.upgrades.timeAtomsUnlocked === undefined) saved.upgrades.timeAtomsUnlocked = 0;
+      if (saved.upgrades.timeAtomChance === undefined) saved.upgrades.timeAtomChance = 0;
+      if (saved.upgrades.timeAtomBonus === undefined) saved.upgrades.timeAtomBonus = 0.5;
+      if (saved.upgrades.supernovaUnlocked === undefined) saved.upgrades.supernovaUnlocked = 0;
+      if (saved.upgrades.supernovaChance === undefined) saved.upgrades.supernovaChance = 0;
+      if (saved.upgrades.supernovaNeutrons === undefined) saved.upgrades.supernovaNeutrons = 10;
+      if (saved.upgrades.blackHoleUnlocked === undefined) saved.upgrades.blackHoleUnlocked = 0;
+      if (saved.upgrades.blackHoleChance === undefined) saved.upgrades.blackHoleChance = 0;
+      if (saved.upgrades.blackHolePullRadius === undefined) saved.upgrades.blackHolePullRadius = 1;
+      if (saved.upgrades.fissionMastery === undefined) saved.upgrades.fissionMastery = 0;
       
       // Ensure new click system fields exist (backward compatibility)
       if (saved.clicks === undefined) saved.clicks = 2;
@@ -173,6 +257,37 @@ class GameStateManager {
         homing: 0,
         momentum: 0,
         chainMultiplier: 1,
+        
+        // Critical hit system
+        critChance: 0,
+        critDoublNeutrons: 0,
+        
+        // Shockwave systems
+        atomShockwave: 0,
+        atomShockwaveForce: 1,
+        clickShockwave: 0,
+        clickShockwaveRadius: 1,
+        
+        // Economy upgrades
+        baseCoinValue: 0,
+        skillCostReduction: 0,
+        startingCoins: 0,
+        economyMastery: 0,
+        
+        // Special atom types
+        timeAtomsUnlocked: 0,
+        timeAtomChance: 0,
+        timeAtomBonus: 0.5,
+        
+        supernovaUnlocked: 0,
+        supernovaChance: 0,
+        supernovaNeutrons: 10,
+        
+        blackHoleUnlocked: 0,
+        blackHoleChance: 0,
+        blackHolePullRadius: 1,
+        
+        fissionMastery: 0,
       },
       lastSave: Date.now(),
       gameStartTime: Date.now(),
@@ -361,6 +476,28 @@ class GameStateManager {
   }
 
   /**
+   * Update max clicks and max time (for skill tree upgrades)
+   */
+  updateResourceCaps(maxClicks?: number, maxTime?: number): void {
+    if (maxClicks !== undefined) {
+      this.state.maxClicks = maxClicks;
+      console.log(`[GameState] maxClicks updated to ${maxClicks}`);
+    }
+    if (maxTime !== undefined) {
+      this.state.maxTime = maxTime;
+      console.log(`[GameState] maxTime updated to ${maxTime}`);
+    }
+  }
+
+  /**
+   * Update upgrade values directly (for skill tree)
+   */
+  updateUpgrade(upgradeKey: keyof GameState['upgrades'], value: number): void {
+    this.state.upgrades[upgradeKey] = value;
+    console.log(`[GameState] ${upgradeKey} updated to ${value}`);
+  }
+
+  /**
    * Save game to localStorage
    */
   saveGame(): void {
@@ -401,7 +538,7 @@ class GameStateManager {
   /**
    * Start a fresh run - reset coins, rank, and skill tree but keep quantum cores and prestige upgrades
    */
-  startFreshRun(): void {
+  async startFreshRun(): Promise<void> {
     // Reset run-specific stats only (keep quantum cores, prestige upgrades, totalAtomsDestroyed, and highestRank)
     this.state.coins = 0;
     this.state.shots = 0;
@@ -439,7 +576,42 @@ class GameStateManager {
       homing: 0,
       momentum: 0,
       chainMultiplier: 1,
+      
+      // Critical hit system
+      critChance: 0,
+      critDoublNeutrons: 0,
+      
+      // Shockwave systems
+      atomShockwave: 0,
+      atomShockwaveForce: 1,
+      clickShockwave: 0,
+      clickShockwaveRadius: 1,
+      
+      // Economy upgrades
+      baseCoinValue: 0,
+      skillCostReduction: 0,
+      startingCoins: 0,
+      economyMastery: 0,
+      
+      // Special atom types
+      timeAtomsUnlocked: 0,
+      timeAtomChance: 0,
+      timeAtomBonus: 0.5,
+      
+      supernovaUnlocked: 0,
+      supernovaChance: 0,
+      supernovaNeutrons: 10,
+      
+      blackHoleUnlocked: 0,
+      blackHoleChance: 0,
+      blackHolePullRadius: 1,
+      
+      fissionMastery: 0,
     };
+    
+    // Reset skill tree
+    const { skillTreeManager } = await import('./SkillTreeManager');
+    skillTreeManager.resetSkillTree();
     
     this.saveGame();
     console.log('[GameState] Fresh run started - coins, rank, and skill tree reset');
@@ -541,6 +713,37 @@ class GameStateManager {
         homing: 0,
         momentum: 0,
         chainMultiplier: 1,
+        
+        // Critical hit system
+        critChance: 0,
+        critDoublNeutrons: 0,
+        
+        // Shockwave systems
+        atomShockwave: 0,
+        atomShockwaveForce: 1,
+        clickShockwave: 0,
+        clickShockwaveRadius: 1,
+        
+        // Economy upgrades
+        baseCoinValue: 0,
+        skillCostReduction: 0,
+        startingCoins: 0,
+        economyMastery: 0,
+        
+        // Special atom types
+        timeAtomsUnlocked: 0,
+        timeAtomChance: 0,
+        timeAtomBonus: 0.5,
+        
+        supernovaUnlocked: 0,
+        supernovaChance: 0,
+        supernovaNeutrons: 10,
+        
+        blackHoleUnlocked: 0,
+        blackHoleChance: 0,
+        blackHolePullRadius: 1,
+        
+        fissionMastery: 0,
       },
       lastSave: Date.now(),
       gameStartTime: Date.now(),

@@ -366,11 +366,42 @@ class ReactionVisualizer {
     const state = gameState.getState();
     
     this.neutrons = this.neutrons.filter(neutron => {
+      // Black hole gravity - apply before normal movement
+      let absorbedByBlackHole = false;
+      for (const atom of this.atoms) {
+        if (!atom.isFissile) {
+          // This is a black hole (non-fissile atom)
+          const dx = atom.x - neutron.x;
+          const dy = atom.y - neutron.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          // Strong gravity pull - affects neutrons within 200 pixels
+          const gravityRange = 200;
+          if (dist < gravityRange && dist > 0) {
+            // Gravity strength increases as neutron gets closer (inverse square)
+            const gravityStrength = 0.8 * (1 - dist / gravityRange);
+            neutron.vx += (dx / dist) * gravityStrength;
+            neutron.vy += (dy / dist) * gravityStrength;
+          }
+          
+          // If neutron gets close enough, it's absorbed
+          if (dist < atom.radius + neutron.size) {
+            absorbedByBlackHole = true;
+            break;
+          }
+        }
+      }
+      
+      // Black hole absorbed this neutron
+      if (absorbedByBlackHole) {
+        return false;
+      }
+      
       neutron.x += neutron.vx;
       neutron.y += neutron.vy;
       neutron.lifetime++;
 
-      // Homing behavior
+      // Homing behavior (nerfed - reduced turn rate)
       if (state.upgrades.homing > 0 && this.atoms.length > 0) {
         const nearest = this.findNearestAtom(neutron.x, neutron.y);
         if (nearest) {
@@ -378,7 +409,8 @@ class ReactionVisualizer {
           const dy = nearest.y - neutron.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > 0) {
-            const turnRate = 0.05 * state.upgrades.homing;
+            // Reduced from 0.05 to 0.02 per level (60% weaker)
+            const turnRate = 0.02 * state.upgrades.homing;
             neutron.vx += (dx / dist) * turnRate;
             neutron.vy += (dy / dist) * turnRate;
             
@@ -628,13 +660,54 @@ class ReactionVisualizer {
     // Calculate lifetime percentage
     const lifetimePercent = atom.lifetime / atom.maxLifetime;
     
+    // Black hole special effects (non-fissile atoms)
+    if (!atom.isFissile) {
+      // Draw gravity field rings (pulsing effect)
+      const pulsePhase = (Date.now() % 2000) / 2000;
+      const pulseSize = Math.sin(pulsePhase * Math.PI * 2) * 10;
+      
+      // Outer gravity field
+      ctx.strokeStyle = `rgba(128, 0, 255, ${0.3 * (1 - pulsePhase)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 60 + pulseSize, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Middle gravity field
+      ctx.strokeStyle = `rgba(128, 0, 255, ${0.5 * (1 - pulsePhase * 0.5)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 40 + pulseSize * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Inner glow
+      const gradient = ctx.createRadialGradient(atom.x, atom.y, 0, atom.x, atom.y, atom.radius);
+      gradient.addColorStop(0, '#000000');
+      gradient.addColorStop(0.7, '#1a0033');
+      gradient.addColorStop(1, '#330066');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Accretion disk effect
+      ctx.strokeStyle = 'rgba(128, 0, 255, 0.6)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(atom.x, atom.y, atom.radius + 8, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.globalAlpha = 1;
+      return;
+    }
+    
     // Fade effect when close to decay (last 20% of lifetime)
     if (lifetimePercent > 0.8) {
       const fadeAmount = (lifetimePercent - 0.8) / 0.2;
       ctx.globalAlpha = 1 - (fadeAmount * 0.5); // Fade to 50% opacity
     }
     
-    // Main circle
+    // Main circle (fissile atoms)
     ctx.fillStyle = atom.color;
     ctx.beginPath();
     ctx.arc(atom.x, atom.y, atom.radius, 0, Math.PI * 2);
