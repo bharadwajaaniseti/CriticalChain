@@ -39,6 +39,10 @@ export class SkillTreePage {
   // Session-only skill upgrades (reset when returning to home)
   private sessionSkills: Map<string, { currentLevel: number; unlocked: boolean }> = new Map();
   
+  // Icon cache for dynamic PNG loading
+  private iconCache: Map<string, HTMLImageElement> = new Map();
+  private nodeBaseImage: HTMLImageElement | null = null;
+  
   // Pan and Zoom
   private offsetX: number = 0;
   private offsetY: number = 0;
@@ -57,6 +61,51 @@ export class SkillTreePage {
   constructor(container: HTMLElement) {
     this.container = container;
     this.loadSkillTree();
+    this.loadNodeBaseImage();
+  }
+
+  /**
+   * Load the base node design (blue circle with yellow border)
+   */
+  private loadNodeBaseImage(): void {
+    // We'll create the node base programmatically in canvas
+    // This ensures we always have the circular design
+    this.nodeBaseImage = new Image();
+    // No need to load - we'll draw it directly in canvas
+  }
+
+  /**
+   * Load skill icon dynamically from assets/Icons folder
+   */
+  private async loadSkillIcon(skillName: string): Promise<HTMLImageElement | null> {
+    // Check cache first
+    if (this.iconCache.has(skillName)) {
+      return this.iconCache.get(skillName)!;
+    }
+
+    try {
+      const img = new Image();
+      const iconPath = `/assets/Icons/${skillName}.png`;
+      
+      // Return promise that resolves when image loads
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          this.iconCache.set(skillName, img);
+          console.log(`[SkillTree] Loaded icon for: ${skillName}`);
+          resolve();
+        };
+        img.onerror = () => {
+          console.log(`[SkillTree] No icon found for: ${skillName}, using fallback`);
+          reject();
+        };
+        img.src = iconPath;
+      });
+
+      return img;
+    } catch (error) {
+      // Icon not found - return null to use fallback
+      return null;
+    }
   }
 
   private async loadSkillTree(): Promise<void> {
@@ -64,11 +113,34 @@ export class SkillTreePage {
       const response = await fetch('/assets/data/skilltree.json');
       this.skillTreeData = await response.json();
       this.initializeSkills();
+      
+      // Preload all skill icons
+      await this.preloadAllIcons();
+      
       this.render();
     } catch (error) {
       console.error('[SkillTree] Failed to load skilltree.json:', error);
       this.container.innerHTML = '<div class="error">Failed to load skill tree</div>';
     }
+  }
+
+  /**
+   * Preload all skill icons based on node names
+   */
+  private async preloadAllIcons(): Promise<void> {
+    if (!this.skillTreeData) return;
+
+    const loadPromises: Promise<void>[] = [];
+
+    for (const [id, skill] of Object.entries(this.skillTreeData)) {
+      const promise = this.loadSkillIcon(skill.name).catch(() => {
+        // Ignore errors - we'll use fallback icons
+      });
+      loadPromises.push(promise as Promise<void>);
+    }
+
+    await Promise.all(loadPromises);
+    console.log(`[SkillTree] Preloaded ${this.iconCache.size} skill icons`);
   }
 
   private initializeSkills(): void {
@@ -392,38 +464,24 @@ export class SkillTreePage {
         ctx.fill();
       }
 
-      // Main node circle with gradient
+      // Main node circle - FLAT design (no glass/bulge effect)
       ctx.beginPath();
       ctx.arc(skill.x, skill.y, currentRadius, 0, Math.PI * 2);
 
       if (isMaxed) {
-        // Maxed: Same gradient as purchased nodes (cyan/green)
-        const gradient = ctx.createRadialGradient(
-          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
-          skill.x, skill.y, currentRadius
-        );
-        gradient.addColorStop(0, '#6fffd2');
-        gradient.addColorStop(0.6, '#00ffaa');
-        gradient.addColorStop(1, '#00cc88');
-        ctx.fillStyle = gradient;
+        // Maxed: Solid cyan/green color
+        ctx.fillStyle = '#00ffaa';
         ctx.shadowBlur = 12;
         ctx.shadowColor = 'rgba(0, 255, 170, 0.5)';
         ctx.fill();
         
-        // Green border for maxed (no glow, just solid green)
+        // Green border for maxed
         ctx.strokeStyle = '#00ff88';
         ctx.lineWidth = 5;
         ctx.stroke();
       } else if (isPurchased) {
-        // Purchased: Cyan/green gradient with glow
-        const gradient = ctx.createRadialGradient(
-          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
-          skill.x, skill.y, currentRadius
-        );
-        gradient.addColorStop(0, '#6fffd2');
-        gradient.addColorStop(0.6, '#00ffaa');
-        gradient.addColorStop(1, '#00cc88');
-        ctx.fillStyle = gradient;
+        // Purchased: Solid cyan color with glow
+        ctx.fillStyle = '#00ffaa';
         ctx.shadowBlur = 18;
         ctx.shadowColor = 'rgba(0, 255, 170, 0.7)';
         ctx.fill();
@@ -432,38 +490,19 @@ export class SkillTreePage {
         ctx.lineWidth = 4;
         ctx.stroke();
       } else if (isEffectivelyUnlocked) {
-        // Available: Blue gradient with strong glow and pulse
-        const gradient = ctx.createRadialGradient(
-          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
-          skill.x, skill.y, currentRadius
-        );
-        gradient.addColorStop(0, '#a5d8ff');
-        gradient.addColorStop(0.5, '#4facfe');
-        gradient.addColorStop(1, '#0077cc');
-        ctx.fillStyle = gradient;
+        // Available: Flat blue fill (no gradient/bulge)
+        ctx.fillStyle = '#4facfe';
         ctx.shadowBlur = 22;
         ctx.shadowColor = 'rgba(79, 172, 254, 0.8)';
         ctx.fill();
         
-        // Animated border
-        ctx.strokeStyle = '#4facfe';
-        ctx.lineWidth = 4;
+        // Yellow border (matching your design)
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 5;
         ctx.stroke();
-        
-        // Inner highlight
-        ctx.beginPath();
-        ctx.arc(skill.x - currentRadius * 0.25, skill.y - currentRadius * 0.25, currentRadius * 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.fill();
       } else {
-        // Locked: Dark gradient
-        const gradient = ctx.createRadialGradient(
-          skill.x - currentRadius * 0.3, skill.y - currentRadius * 0.3, currentRadius * 0.1,
-          skill.x, skill.y, currentRadius
-        );
-        gradient.addColorStop(0, 'rgba(100, 100, 100, 0.9)');
-        gradient.addColorStop(1, 'rgba(60, 60, 60, 0.9)');
-        ctx.fillStyle = gradient;
+        // Locked: Flat gray
+        ctx.fillStyle = 'rgba(80, 80, 80, 0.9)';
         ctx.shadowBlur = 5;
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.fill();
@@ -476,50 +515,96 @@ export class SkillTreePage {
       ctx.shadowBlur = 0;
       skill.radius = currentRadius;
 
-      // Icon with better styling
-      const icon = this.getSkillIcon(skill);
-      const fontSize = currentRadius * 0.85;
-      ctx.font = `bold ${fontSize}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      // Draw icon - try PNG first, fallback to emoji/text
+      const iconImage = this.iconCache.get(skill.name);
       
-      // Icon shadow for depth
-      if (isEffectivelyUnlocked) {
-        ctx.shadowBlur = 4;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
+      if (iconImage && iconImage.complete && iconImage.naturalWidth > 0) {
+        // Draw PNG icon centered in the circle
+        const iconSize = currentRadius * 1.4; // Icon takes up 70% of diameter
+        
+        // Calculate center position
+        const iconX = skill.x - iconSize / 2;
+        const iconY = skill.y - iconSize / 2;
+        
+        // Add subtle shadow for icon depth
+        if (isEffectivelyUnlocked) {
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+        }
+        
+        // Save context for clipping
+        ctx.save();
+        
+        // Create circular clipping path to ensure icon fits perfectly in circle
+        ctx.beginPath();
+        ctx.arc(skill.x, skill.y, currentRadius * 0.7, 0, Math.PI * 2);
+        ctx.clip();
+        
+        // Draw the icon image (centered and clipped to circle)
+        ctx.drawImage(iconImage, iconX, iconY, iconSize, iconSize);
+        
+        // Restore context
+        ctx.restore();
+        
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      } else {
+        // Fallback to emoji/text icon
+        const icon = this.getSkillIcon(skill);
+        const fontSize = currentRadius * 0.85;
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Icon shadow for depth
+        if (isEffectivelyUnlocked) {
+          ctx.shadowBlur = 4;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+        }
+        
+        ctx.fillStyle = isEffectivelyUnlocked ? '#fff' : 'rgba(140, 140, 140, 0.7)';
+        ctx.fillText(icon, skill.x, skill.y);
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
       }
-      
-      ctx.fillStyle = isEffectivelyUnlocked ? '#fff' : 'rgba(140, 140, 140, 0.7)';
-      ctx.fillText(icon, skill.x, skill.y);
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
 
-      // Level indicator with better styling
+      // Level indicator - clean and compact
       if (isPurchased) {
         const levelText = `${effectiveLevel}/${skill.maxLevel}`;
-        const levelFontSize = currentRadius * 0.38;
-        const levelY = skill.y + currentRadius + 18;
+        const levelFontSize = currentRadius * 0.32; // Smaller font
+        const levelY = skill.y + currentRadius + 22; // Further below node
         
-        // Background badge for level
+        // Compact background badge
+        ctx.font = `bold ${levelFontSize}px Arial`;
         const textMetrics = ctx.measureText(levelText);
-        const badgeWidth = textMetrics.width + 12;
-        const badgeHeight = levelFontSize + 6;
+        const badgeWidth = textMetrics.width + 10;
+        const badgeHeight = levelFontSize + 4;
         const badgeX = skill.x - badgeWidth / 2;
-        const badgeY = levelY - levelFontSize / 2 - 3;
+        const badgeY = levelY - levelFontSize / 2 - 2;
         
-        ctx.fillStyle = isMaxed ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 0, 0, 0.6)';
+        // Draw badge background
+        ctx.fillStyle = isMaxed ? 'rgba(255, 215, 0, 0.25)' : 'rgba(0, 0, 0, 0.7)';
         ctx.beginPath();
-        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8);
+        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 6);
         ctx.fill();
         
-        // Level text
-        ctx.font = `bold ${levelFontSize}px Arial`;
-        ctx.fillStyle = isMaxed ? '#ffd700' : '#00ffaa';
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.lineWidth = 3;
+        // Draw border for badge
+        ctx.strokeStyle = isMaxed ? 'rgba(255, 215, 0, 0.5)' : 'rgba(0, 255, 170, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        
+        // Level text with outline
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = isMaxed ? '#ffd700' : '#ffffff';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.lineWidth = 2.5;
         ctx.strokeText(levelText, skill.x, levelY);
         ctx.fillText(levelText, skill.x, levelY);
       }
@@ -567,10 +652,10 @@ export class SkillTreePage {
     if (!this.canvas) return;
 
     // Grid-based layout for perfect positioning without overlaps
-    // Grid cells: 150px spacing (horizontal and vertical)
+    // Grid cells: 200px spacing (horizontal and vertical)
     // Origin at (500, 500), grid extends in rows and columns
     
-    const gridSize = 150; // Distance between grid cells
+    const gridSize = 200; // Distance between grid cells (increased for better spacing)
     const offsetX = 500;  // Starting X position
     const offsetY = 500;  // Starting Y position
     
@@ -594,34 +679,44 @@ export class SkillTreePage {
       'neutron_count_3': grid(6, 2),
       'neutron_speed_1': grid(8, 2),
       
+      // === ROW 2.5: Time Atom Coins Branch ===
+      'time_atom_coins_1': grid(3, 2.5),
+      
       // === ROW 3: Time Atoms + Neutron Mid + Critical Neutron ===
-      'time_atom_chance_1': grid(2, 3),
-      'unlock_time_atoms': grid(3, 3),
-      'time_atom_value_1': grid(4, 3),
+      'time_atom_chance_1': grid(1, 3),
+      'unlock_time_atoms': grid(2, 3),
+      'time_atom_value_1': grid(3, 3),
       'neutron_size_1': grid(5, 3),
       'neutron_count_2': grid(6, 3),
       'critical_neutron_chance_1': grid(8, 3),
       'critical_neutron_effect_1': grid(9, 3),
       
+      // === ROW 3.5: Supernova Atom Coins Branch ===
+      'supernova_atom_coins_1': grid(2, 3.5),
+      
       // === ROW 4: Special Atoms Path + Neutron Basics + Atom Upper ===
-      'supernova_atom_chance_1': grid(1, 4),
-      'unlock_supernova_atoms': grid(2, 4),
-      'supernova_atom_neutrons_1': grid(3, 4),
-      'special_atom_basics': grid(4, 4),
+      'supernova_atom_chance_1': grid(0, 4),
+      'unlock_supernova_atoms': grid(1, 4),
+      'supernova_atom_neutrons_1': grid(2, 4),
+      'special_atom_basics': grid(3, 4),
       'neutron_count_1': grid(6, 4),
       'critical_neutron_unlock': grid(8, 4),
       'atom_spawn_rate_2': grid(10, 4),
-      'ultimate_fission': grid(0, 4),
+      'ultimate_fission': grid(-1, 4),
       
       // === ROW 5: Neutron Basics + Atom Basics ===
-      'black_hole_atom_chance_1': grid(2, 5),
-      'black_hole_pull_radius_1': grid(3, 5),
+      'black_hole_atom_chance_1': grid(1, 5),
+      'black_hole_pull_radius_1': grid(2, 5),
       'neutron_basics': grid(6, 5),
       'atom_basics': grid(8, 5),
       'atom_spawn_rate_1': grid(9, 5),
       
+      // === ROW 5.5: Black Hole Atom Coins Branch ===
+      'black_hole_atom_coins_1': grid(2, 5.5),
+      
       // === ROW 6: ROOT + Atom Mid Branch ===
-      'unlock_black_hole_atoms': grid(3, 6),
+      'unlock_black_hole_atoms': grid(2, 6),
+      'black_hole_spawn_atoms_1': grid(1, 6.5),
       'root': grid(6, 6),
       'atom_size_1': grid(8, 6),
       'atom_neutron_count_1': grid(9, 6),
@@ -629,9 +724,9 @@ export class SkillTreePage {
       'atom_neutron_count_3': grid(11, 6),
       
       // === ROW 7: Economy + Chain Basics + Atom Lower ===
-      'base_coin_value_2': grid(2, 7),
-      'base_coin_value_1': grid(3, 7),
-      'economy_basics': grid(4, 7),
+      'base_coin_value_2': grid(1, 7),
+      'base_coin_value_1': grid(2, 7),
+      'economy_basics': grid(3, 7),
       'chain_basics': grid(8, 7),
       'atom_lifetime_1': grid(9, 7),
       'atom_shockwave_unlock': grid(10, 7),
@@ -639,14 +734,14 @@ export class SkillTreePage {
       'ultimate_atom': grid(12, 7),
       
       // === ROW 8: Economy Lower + Resource Basics + Chain Mid ===
-      'starting_coins_1': grid(2, 8),
-      'skill_cost_reduction_1': grid(3, 8),
+      'starting_coins_1': grid(1, 8),
+      'skill_cost_reduction_1': grid(2, 8),
       'resource_basics': grid(6, 8),
       'neutron_reflector': grid(7, 8),
       'chain_multiplier_1': grid(8, 8),
       'chain_multiplier_2': grid(9, 8),
       'chain_multiplier_3': grid(10, 8),
-      'ultimate_economy': grid(0, 8),
+      'ultimate_economy': grid(-1, 8),
       
       // === ROW 9: Click Shockwave + Clicks + Chain Lower ===
       'click_shockwave_unlock': grid(5, 9),

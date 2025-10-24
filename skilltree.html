@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Prestige Tree — Hierarchical Editor</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e1a;
+    --panel:#0f1420;
+    --muted:#94a3b8;
+    --accent:#60a5fa;
+    --card:#0d1117;
+  }
+  html,body{height:100%;margin:0;overflow:hidden;}
+  body{
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto;
+    background:var(--bg);
+    color:#eef2ff;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  header{
+    position:fixed;left:0;right:0;top:0;height:64px;
+    background:linear-gradient(180deg, rgba(15,20,32,0.95), rgba(10,14,26,0.98));
+    backdrop-filter:blur(12px);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 20px;box-shadow:0 4px 24px rgba(0,0,0,0.5);z-index:100;
+    border-bottom:1px solid rgba(255,255,255,0.03);
+  }
+  header .brand {display:flex;align-items:center;gap:14px}
+  .logo {
+    width:38px;height:38px;border-radius:8px;
+    background:linear-gradient(135deg,#4f46e5,#06b6d4);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;color:white;font-size:18px;
+    box-shadow:0 4px 12px rgba(59,130,246,0.3);
+  }
+  header h1 {font-size:17px;margin:0;font-weight:600;letter-spacing:.5px}
+
+  .controls {display:flex;gap:10px;align-items:center}
+  .btn {
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.06);
+    padding:9px 14px;border-radius:8px;
+    color:#e6eef8;font-size:13px;cursor:pointer;
+    transition:all 0.2s;font-weight:500;
+  }
+  .btn:hover{background:rgba(255,255,255,0.08);transform:translateY(-1px)}
+  .btn.primary{
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    border:none;box-shadow:0 4px 14px rgba(37,99,235,0.25);
+  }
+  .btn.primary:hover{box-shadow:0 6px 20px rgba(37,99,235,0.35)}
+  input[type="file"]{display:none;}
+
+  #container{
+    position:fixed;left:0;right:340px;top:64px;bottom:0;
+    background:radial-gradient(ellipse at top, rgba(59,130,246,0.05), transparent 50%),
+               var(--bg);
+    overflow:hidden;
+  }
+  #sidebar{
+    position:fixed;right:0;top:64px;bottom:0;width:340px;
+    background:linear-gradient(180deg, rgba(15,20,32,0.8), rgba(10,14,26,0.9));
+    backdrop-filter:blur(20px);
+    border-left:1px solid rgba(255,255,255,0.04);
+    padding:24px;overflow:auto;
+  }
+  #sidebar h3{margin:0 0 12px 0;font-size:15px;font-weight:600}
+  label{display:block;font-size:12px;color:var(--muted);margin-top:14px;margin-bottom:7px;font-weight:500}
+  input[type="text"],input[type="number"],textarea,select{
+    width:100%;padding:10px;border-radius:8px;
+    background:var(--card);border:1px solid rgba(255,255,255,0.05);
+    color:#ebf0ff;font-size:13px;transition:all 0.2s;
+  }
+  input:focus,textarea:focus,select:focus{
+    outline:none;border-color:rgba(59,130,246,0.4);
+    box-shadow:0 0 0 3px rgba(59,130,246,0.1);
+  }
+  textarea{resize:vertical;min-height:90px;font-family:inherit}
+
+  .meta {font-size:12px;color:var(--muted);margin-top:10px;padding:10px;background:rgba(255,255,255,0.02);border-radius:6px}
+  .sidebar-actions{display:flex;gap:10px;margin-top:16px}
+  .muted {color:var(--muted);font-size:13px;margin-top:10px;line-height:1.6}
+
+  #tip {
+    position:fixed;left:20px;bottom:20px;
+    background:rgba(15,20,32,0.9);backdrop-filter:blur(12px);
+    padding:12px 16px;border-radius:10px;
+    border:1px solid rgba(255,255,255,0.06);
+    font-size:13px;color:var(--muted);
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .layout-selector{
+    display:flex;gap:8px;padding:12px;
+    background:rgba(255,255,255,0.02);
+    border-radius:8px;margin-bottom:16px;
+  }
+  .layout-btn{
+    flex:1;padding:8px;border-radius:6px;
+    background:transparent;border:1px solid rgba(255,255,255,0.06);
+    color:var(--muted);cursor:pointer;font-size:12px;
+    transition:all 0.2s;
+  }
+  .layout-btn.active{
+    background:rgba(59,130,246,0.15);
+    border-color:rgba(59,130,246,0.4);
+    color:#60a5fa;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">⚛</div>
+      <div>
+        <h1>Prestige Tree Editor</h1>
+        <div style="font-size:12px;color:var(--muted)">Hierarchical • Pan / Zoom • Drag • Edit • Export</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <label class="btn" for="fileInput"><input id="fileInput" type="file" accept=".json"><span>📁 Load JSON</span></label>
+      <button class="btn" id="autoFitBtn">🎯 Auto-fit</button>
+      <button class="btn" id="addNodeBtn">➕ Add Node</button>
+      <button class="btn" id="connectBtn">🔗 Connect</button>
+      <button class="btn primary" id="exportBtn">💾 Export</button>
+      <button class="btn" id="resetBtn">↺ Reset</button>
+    </div>
+  </header>
+
+  <div id="container">
+    <svg id="svgRoot" width="100%" height="100%">
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+  </div>
+
+  <div id="sidebar">
+    <div class="layout-selector">
+      <button class="layout-btn active" data-layout="tree">🌳 Tree</button>
+      <button class="layout-btn" data-layout="force">⚡ Force</button>
+      <button class="layout-btn" data-layout="grid">⊞ Grid</button>
+    </div>
+
+    <h3>✏️ Edit Node</h3>
+    <div class="muted">Select a node to edit its details</div>
+    <label>ID</label><input id="nodeId" type="text" readonly>
+    <label>Name</label><input id="nodeName" type="text">
+    <label>Description</label><textarea id="nodeDesc"></textarea>
+    <label>Base Cost</label><input id="nodeCost" type="number" min="0">
+    <label>Max Level</label><input id="nodeMax" type="number" min="1">
+    <label>Unlocked</label><select id="nodeUnlocked"><option value="true">true</option><option value="false">false</option></select>
+
+    <div class="sidebar-actions">
+      <button class="btn primary" id="saveNodeBtn">Save</button>
+      <button class="btn" id="deleteNodeBtn">Delete</button>
+    </div>
+    <div class="meta" id="nodeMeta"></div>
+
+    <hr style="margin:20px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+    <h3>🔗 Connection Info</h3>
+    <div id="connectionMeta" class="muted">Right-click a link to remove</div>
+    
+    <hr style="margin:20px 0;border:none;border-top:1px solid rgba(255,255,255,0.04)" />
+    <h3>💡 Tips</h3>
+    <div class="muted">
+      • Scroll to zoom, drag to pan<br/>
+      • Drag nodes to reposition<br/>
+      • Connect Mode: click source → target<br/>
+      • Right-click node to toggle lock<br/>
+      • Switch layouts for different views
+    </div>
+  </div>
+
+  <div id="tip">Load a JSON file to begin</div>
+
+<script>
+const svg = d3.select("#svgRoot");
+const container = svg.append("g").attr("class","viewport");
+let width = document.getElementById('container').clientWidth;
+let height = document.getElementById('container').clientHeight;
+
+let data = null;
+let originalData = null;
+let nodes = [];
+let links = [];
+let nodeMap = new Map();
+let groupColors = {};
+let connectMode = false;
+let connectSource = null;
+let selectedNode = null;
+let currentLayout = 'tree';
+
+const palette = ["#60a5fa","#34d399","#f472b6","#fb923c","#a78bfa","#f59e0b","#fbbf24","#fb7185","#c084fc"];
+
+const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", (event)=>container.attr("transform", event.transform));
+svg.call(zoom).on("dblclick.zoom", null);
+
+function resize() {
+  width = document.getElementById('container').clientWidth;
+  height = document.getElementById('container').clientHeight;
+  svg.attr("width", width).attr("height", height);
+}
+window.addEventListener("resize", resize);
+resize();
+
+const linkLayer = container.append("g").attr("class","links");
+const nodeLayer = container.append("g").attr("class","nodes");
+
+document.getElementById("fileInput").addEventListener("change", e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = evt => {
+    try {
+      data = JSON.parse(evt.target.result);
+      originalData = JSON.parse(JSON.stringify(data));
+      prepareGraph();
+      document.getElementById("tip").textContent = "Loaded successfully!";
+    } catch(err) {
+      alert("Invalid JSON: " + err.message);
+    }
+  };
+  r.readAsText(f);
+});
+
+function prepareGraph(){
+  nodeMap.clear();
+  nodes = [];
+  links = [];
+  
+  for(const id in data){
+    const n = {...data[id], id};
+    nodes.push(n);
+    nodeMap.set(id, n);
+  }
+  
+  nodes.forEach(n=>{
+    if(!Array.isArray(n.connectedNodes)) n.connectedNodes = [];
+    n.connectedNodes.forEach(tid=>{
+      if(data[tid]) links.push({source: n.id, target: tid});
+    });
+  });
+
+  const groups = groupNodesByPrefix();
+  assignGroupColors(Object.keys(groups));
+  
+  applyLayout();
+  renderGraph();
+  setTimeout(autoFit, 100);
+}
+
+function groupNodesByPrefix(){
+  const groups = {};
+  nodes.forEach(n=>{
+    const prefix = n.id === "root" ? "root" : (n.id.split("_")[0] || "misc");
+    if(!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push(n.id);
+  });
+  return groups;
+}
+
+function assignGroupColors(groupKeys){
+  groupColors = {};
+  groupKeys.sort();
+  groupKeys.forEach((g,i)=> groupColors[g] = palette[i % palette.length]);
+}
+
+function applyTreeLayout(){
+  const rootId = findRootId();
+  const hierarchy = buildHierarchy(rootId);
+  
+  const treeLayout = d3.tree()
+    .size([width - 200, height - 200])
+    .separation((a, b) => (a.parent === b.parent ? 1.5 : 2.5));
+  
+  const root = d3.hierarchy(hierarchy);
+  treeLayout(root);
+  
+  const nodePositions = new Map();
+  root.descendants().forEach(d => {
+    nodePositions.set(d.data.id, {x: d.x + 100, y: d.y + 100});
+  });
+  
+  nodes.forEach(n=>{
+    if(n.__pinned){
+      n.x = n.__px;
+      n.y = n.__py;
+    } else {
+      const pos = nodePositions.get(n.id);
+      if(pos){
+        n.x = pos.x;
+        n.y = pos.y;
+      } else {
+        n.x = width/2 + (Math.random()-0.5)*200;
+        n.y = height - 100;
+      }
+    }
+  });
+}
+
+function applyGridLayout(){
+  const cols = Math.ceil(Math.sqrt(nodes.length * 1.5));
+  const cellWidth = (width - 100) / cols;
+  const cellHeight = 120;
+  
+  const groups = groupNodesByPrefix();
+  let idx = 0;
+  
+  Object.keys(groups).sort().forEach(group=>{
+    groups[group].forEach(nid=>{
+      const n = nodeMap.get(nid);
+      if(!n.__pinned){
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        n.x = 80 + col * cellWidth;
+        n.y = 80 + row * cellHeight;
+        idx++;
+      }
+    });
+  });
+}
+
+function buildHierarchy(rootId){
+  const visited = new Set();
+  
+  function buildNode(id){
+    if(visited.has(id)) return null;
+    visited.add(id);
+    
+    const node = nodeMap.get(id);
+    if(!node) return null;
+    
+    const children = (node.connectedNodes || [])
+      .map(cid => buildNode(cid))
+      .filter(c => c !== null);
+    
+    return {id, name: node.name, children: children.length > 0 ? children : undefined};
+  }
+  
+  return buildNode(rootId);
+}
+
+function findRootId(){
+  if(data && data["root"]) return "root";
+  
+  const inDegree = {};
+  nodes.forEach(n => inDegree[n.id] = 0);
+  links.forEach(l => inDegree[l.target]++);
+  
+  for(const id in inDegree){
+    if(inDegree[id] === 0) return id;
+  }
+  
+  return nodes[0]?.id || "root";
+}
+
+function renderGraph(){
+  nodes = Array.from(nodeMap.values());
+  links = [];
+  nodes.forEach(n=>{
+    (n.connectedNodes || []).forEach(t=>{
+      if(nodeMap.has(t)) links.push({source: n.id, target: t});
+    });
+  });
+
+  // Links
+  const linkSel = linkLayer.selectAll("path.link").data(links, d=>d.source + "->" + d.target);
+  linkSel.exit().transition().duration(300).style("opacity",0).remove();
+
+  const linkEnter = linkSel.enter().append("path")
+    .attr("class","link")
+    .attr("fill","none")
+    .attr("stroke","#374151")
+    .attr("stroke-width",2.5)
+    .attr("stroke-opacity",0.4)
+    .style("opacity",0)
+    .on("contextmenu", (event,d)=>{
+      event.preventDefault();
+      const src = nodeMap.get(d.source);
+      if(src){
+        src.connectedNodes = src.connectedNodes.filter(x => x !== d.target);
+        data[src.id] = src;
+        prepareGraph();
+      }
+    })
+    .on("mouseover", function(event,d){
+      d3.select(this).attr("stroke","#60a5fa").attr("stroke-width",4).attr("stroke-opacity",0.8);
+      document.getElementById("connectionMeta").textContent = `${d.source} → ${d.target}`;
+    })
+    .on("mouseout", function(){
+      d3.select(this).attr("stroke","#374151").attr("stroke-width",2.5).attr("stroke-opacity",0.4);
+      document.getElementById("connectionMeta").textContent = "Right-click a link to remove";
+    });
+
+  linkEnter.transition().duration(400).style("opacity",1);
+
+  // NOTE: during non-simulation layouts we draw straight lines; during Bloom, ticked() will update curves
+  linkEnter.merge(linkSel).attr("d", d => {
+    const s = nodeMap.get(d.source);
+    const t = nodeMap.get(d.target);
+    if(!s || !t) return "";
+    return `M ${s.x} ${s.y} L ${t.x} ${t.y}`;
+  });
+
+  // Nodes
+  const nodeSel = nodeLayer.selectAll("g.node").data(nodes, d=>d.id);
+  nodeSel.exit().transition().duration(300).style("opacity",0).remove();
+
+  const nodeEnter = nodeSel.enter().append("g")
+    .attr("class","node")
+    .attr("cursor","pointer")
+    .style("opacity",0)
+    .call(d3.drag()
+      .on("start", (event,d) => event.sourceEvent.stopPropagation())
+      .on("drag", (event,d) => {
+        const t = d3.zoomTransform(svg.node());
+        d.x = (event.x - t.x) / t.k;
+        d.y = (event.y - t.y) / t.k;
+        d.__pinned = true;
+        d.__px = d.x;
+        d.__py = d.y;
+        d3.select(event.sourceEvent.target.parentNode).attr("transform", `translate(${d.x},${d.y})`);
+        linkLayer.selectAll("path.link").attr("d", dd => {
+          const s = nodeMap.get(dd.source), t = nodeMap.get(dd.target);
+          return s && t ? `M ${s.x} ${s.y} L ${t.x} ${t.y}` : "";
+        });
+      })
+      .on("end", (event,d) => data[d.id] = d)
+    )
+    .on("click", (event,d) => {
+      event.stopPropagation();
+      handleNodeClick(d);
+    })
+    .on("contextmenu", (event,d) => {
+      event.preventDefault();
+      d.unlocked = !d.unlocked;
+      data[d.id] = d;
+      renderGraph();
+    });
+
+  nodeEnter.append("circle").attr("class","outer").attr("r", 24).attr("stroke-width",3);
+  nodeEnter.append("circle").attr("class","inner").attr("r",10).attr("fill","#fff");
+  nodeEnter.append("text")
+    .attr("class","label")
+    .attr("y", -36)
+    .attr("text-anchor", "middle")
+    .attr("font-size", 12)
+    .attr("font-weight", 500)
+    .attr("fill","#e6eef8")
+    .style("pointer-events","none")
+    .style("text-shadow","0 2px 8px rgba(0,0,0,0.8)");
+
+  nodeEnter.transition().duration(400).style("opacity",1);
+
+  const allNodes = nodeEnter.merge(nodeSel);
+  allNodes.attr("transform", d => `translate(${d.x},${d.y})`);
+  
+  allNodes.select("circle.outer")
+    .transition().duration(300)
+    .attr("fill", d => nodeFillColor(d))
+    .attr("stroke", d => {
+      const col = nodeFillColor(d);
+      return d3.color(col).brighter(0.5).formatHex();
+    });
+
+  allNodes.select("circle.inner")
+    .transition().duration(300)
+    .attr("opacity", d => d.unlocked ? 1 : 0.1);
+
+  allNodes.select("text.label").text(d => d.name || d.id);
+
+  allNodes
+    .on("mouseover", function(){
+      d3.select(this).select("circle.outer")
+        .transition().duration(150)
+        .attr("r",28)
+        .attr("filter","url(#glow)");
+    })
+    .on("mouseout", function(){
+      d3.select(this).select("circle.outer")
+        .transition().duration(150)
+        .attr("r",24)
+        .attr("filter",null);
+    });
+}
+
+function nodeFillColor(d){
+  const prefix = d.id === "root" ? "root" : (d.id.split("_")[0] || "misc");
+  const col = groupColors[prefix] || "#475569";
+  return d.unlocked ? col : d3.color(col).darker(1.5).formatHex();
+}
+
+function handleNodeClick(n){
+  if(connectMode){
+    if(!connectSource){
+      connectSource = n;
+      document.getElementById("tip").textContent = `Source: ${n.id} — click target`;
+    } else if(connectSource.id === n.id){
+      connectSource = null;
+      document.getElementById("tip").textContent = "Connect mode: source cleared";
+    } else {
+      if(!connectSource.connectedNodes.includes(n.id)){
+        connectSource.connectedNodes.push(n.id);
+        data[connectSource.id] = connectSource;
+      }
+      connectSource = null;
+      prepareGraph();
+      document.getElementById("tip").textContent = "Connection created!";
+    }
+  } else {
+    selectNode(n);
+  }
+}
+
+function selectNode(n){
+  selectedNode = n;
+  if(!n){
+    document.getElementById("nodeId").value = "";
+    document.getElementById("nodeName").value = "";
+    document.getElementById("nodeDesc").value = "";
+    document.getElementById("nodeCost").value = "";
+    document.getElementById("nodeMax").value = "";
+    document.getElementById("nodeUnlocked").value = "false";
+    document.getElementById("nodeMeta").textContent = "";
+    nodeLayer.selectAll("circle.outer").attr("stroke-width", 3);
+    return;
+  }
+  document.getElementById("nodeId").value = n.id;
+  document.getElementById("nodeName").value = n.name || "";
+  document.getElementById("nodeDesc").value = n.description || "";
+  document.getElementById("nodeCost").value = n.baseCost || 0;
+  document.getElementById("nodeMax").value = n.maxLevel || 1;
+  document.getElementById("nodeUnlocked").value = n.unlocked ? "true" : "false";
+  document.getElementById("nodeMeta").textContent = `Connections: ${(n.connectedNodes||[]).length} | Group: ${n.id.split('_')[0] || 'misc'}`;
+  nodeLayer.selectAll("circle.outer").attr("stroke-width", d => d.id === n.id ? 5 : 3);
+}
+
+function autoFit(){
+  if(!nodes.length) return;
+  const padding = 100;
+  const xs = nodes.map(n=>n.x), ys = nodes.map(n=>n.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = maxX - minX || 1, h = maxY - minY || 1;
+  const scale = Math.max(0.3, Math.min(1.5, Math.min((width - padding) / w, (height - padding) / h)));
+  const tx = (width/2) - (minX + maxX)/2 * scale;
+  const ty = (height/2) - (minY + maxY)/2 * scale;
+  svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(scale));
+}
+
+// ------------------------------
+// 🌌 Dynamic Network Bloom Layout
+// ------------------------------
+let bloomSimulation = null;
+
+function startBloomSimulation() {
+  if (bloomSimulation) bloomSimulation.stop();
+
+  // Ensure links use node refs once simulation starts
+  bloomSimulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(160).strength(0.5))
+    .force("charge", d3.forceManyBody().strength(-600))
+    .force("collision", d3.forceCollide().radius(40))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("radial", d3.forceRadial(d => {
+      const depth = getDepthFromRoot(d.id);
+      return 100 + depth * 100;
+    }, width / 2, height / 2).strength(0.05))
+    .alphaDecay(0.005)
+    .on("tick", ticked);
+
+  // Give it a nudge when switching layouts
+  bloomSimulation.alpha(1).restart();
+}
+
+function getDepthFromRoot(id) {
+  const visited = new Set();
+  const queue = [{ id: findRootId(), depth: 0 }];
+  while (queue.length) {
+    const { id: curr, depth } = queue.shift();
+    if (curr === id) return depth;
+    if (visited.has(curr)) continue;
+    visited.add(curr);
+    const n = nodeMap.get(curr);
+    if (!n) continue;
+    (n.connectedNodes || []).forEach(cid => queue.push({ id: cid, depth: depth + 1 }));
+  }
+  return 0;
+}
+
+function ticked() {
+  // Use simulation-provided node objects (d.source/d.target)
+  linkLayer.selectAll("path.link")
+    .attr("d", d => {
+      const s = d.source, t = d.target;
+      if (!s || !t) return "";
+      const dx = t.x - s.x, dy = t.y - s.y;
+      const dr = Math.sqrt(dx * dx + dy * dy) || 1;
+      const mx = (s.x + t.x) / 2 + (dy / dr) * 20;
+      const my = (s.y + t.y) / 2 - (dx / dr) * 20;
+      return `M${s.x},${s.y} Q${mx},${my} ${t.x},${t.y}`;
+    });
+
+  nodeLayer.selectAll("g.node").attr("transform", d => `translate(${d.x},${d.y})`);
+}
+
+// ------------------------------
+// 🌿 Layout Integration
+// ------------------------------
+function applyLayout(){
+  if (bloomSimulation) bloomSimulation.stop();
+
+  if(currentLayout === 'tree') {
+    applyTreeLayout();
+  } else if(currentLayout === 'grid') {
+    applyGridLayout();
+  } else if(currentLayout === 'force') {
+    // Start dynamic network bloom simulation; return to avoid static render override
+    startBloomSimulation();
+    return;
+  }
+
+  renderGraph();
+}
+
+// Layout switcher
+document.querySelectorAll('.layout-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.layout-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentLayout = btn.dataset.layout;
+    if(data) prepareGraph();
+  });
+});
+
+// UI Events
+document.getElementById("autoFitBtn").addEventListener("click", autoFit);
+
+document.getElementById("addNodeBtn").addEventListener("click", ()=>{
+  if(!data) return alert("Load JSON first");
+  let nid;
+  do { nid = "node_" + Math.floor(Math.random()*900000 + 100000); } while(data[nid]);
+  data[nid] = {
+    name: "New Node", description: "", icon: "",
+    currentLevel: 0, maxLevel: 1, baseCost: 1,
+    costMultiplier: 1.0, unlocked: false, connectedNodes: []
+  };
+  prepareGraph();
+  selectNode(nodeMap.get(nid));
+});
+
+document.getElementById("connectBtn").addEventListener("click", ()=>{
+  if(!data) return alert("Load JSON first");
+  connectMode = !connectMode;
+  connectSource = null;
+  const btn = document.getElementById("connectBtn");
+  btn.textContent = connectMode ? "🔗 ON" : "🔗 Connect";
+  btn.style.background = connectMode ? "rgba(59,130,246,0.2)" : "";
+  document.getElementById("tip").textContent = connectMode ? "Connect mode active" : "Connect mode off";
+});
+
+svg.on("click", ()=>{ if(!connectMode) selectNode(null); });
+
+document.getElementById("saveNodeBtn").addEventListener("click", ()=>{
+  if(!selectedNode) return alert("No node selected");
+  selectedNode.name = document.getElementById("nodeName").value;
+  selectedNode.description = document.getElementById("nodeDesc").value;
+  selectedNode.baseCost = Number(document.getElementById("nodeCost").value) || 0;
+  selectedNode.maxLevel = Number(document.getElementById("nodeMax").value) || 1;
+  selectedNode.unlocked = document.getElementById("nodeUnlocked").value === "true";
+  data[selectedNode.id] = selectedNode;
+  renderGraph();
+  document.getElementById("tip").textContent = "✓ Node saved";
+});
+
+document.getElementById("deleteNodeBtn").addEventListener("click", ()=>{
+  if(!selectedNode || !confirm(`Delete ${selectedNode.id}?`)) return;
+  delete data[selectedNode.id];
+  nodeMap.delete(selectedNode.id);
+  for(const id in data){
+    if(data[id].connectedNodes)
+      data[id].connectedNodes = data[id].connectedNodes.filter(x => x !== selectedNode.id);
+  }
+  selectedNode = null;
+  prepareGraph();
+});
+
+document.getElementById("exportBtn").addEventListener("click", ()=>{
+  if(!data) return alert("Load JSON first");
+  const cleaned = {};
+  for(const id in data){
+    const n = {...data[id]};
+    delete n.__pinned; delete n.__px; delete n.__py;
+    cleaned[id] = n;
+  }
+  const blob = new Blob([JSON.stringify(cleaned, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "skilltree_export.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById("tip").textContent = "✓ Exported!";
+});
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if(!originalData || !confirm("Reset to original?")) return;
+  data = JSON.parse(JSON.stringify(originalData));
+  prepareGraph();
+  document.getElementById("tip").textContent = "↺ Reset complete";
+});
+
+// ------------------------------
+// 🧭 Keyboard shortcuts
+// ------------------------------
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && connectMode) {
+    connectMode = false;
+    connectSource = null;
+    const btn = document.getElementById("connectBtn");
+    btn.textContent = "🔗 Connect";
+    btn.style.background = "";
+    document.getElementById("tip").textContent = "Connect mode off";
+  }
+  if (e.key === "f") autoFit();
+  if (e.key === "Delete" && selectedNode) {
+    document.getElementById("deleteNodeBtn").click();
+  }
+});
+
+// Tip
+document.getElementById("tip").textContent = "Load a JSON file to begin • Scroll = Zoom • Drag = Pan";
+</script>
+</body>
+</html>
