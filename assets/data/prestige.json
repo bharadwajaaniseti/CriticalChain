@@ -6,7 +6,7 @@
     "icon": "prestige_galaxy",
     "currentLevel": 0,
     "maxLevel": 1,
-    "baseCost": 0,
+    "baseCost": 1,
     "costMultiplier": 1.0,
     "unlocked": true,
     "connectedNodes": ["perma_branch_foundation", "perma_branch_economy", "perma_branch_automation", "perma_branch_special"]
