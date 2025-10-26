@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Skill Tree Grid Visualizer</title>
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      font-family: monospace;
+      text-align: center;
+    }
+    canvas {
+      background: #222;
+      margin-top: 20px;
+      border: 1px solid #444;
+    }
+  </style>
+</head>
+<body>
+  <h2>Skill Tree Grid Visualizer</h2>
+  <canvas id="gridCanvas" width="1600" height="1600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gridCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const gridSize = 200;
+    const offsetX = 500;
+    const offsetY = 500;
+
+    const grid = (x, y) => ({
+      x: offsetX + x * gridSize,
+      y: offsetY + y * gridSize,
+    });
+
+    const positions = {
+      'ultimate_neutron': grid(6, 0),
+      'neutron_homing': grid(3, 1),
+      'neutron_lifetime_2': grid(4, 1),
+      'neutron_pierce': grid(8, 1),
+      'neutron_speed_2': grid(9, 1),
+      'neutron_lifetime_1': grid(4, 2),
+      'neutron_count_3': grid(6, 2),
+      'neutron_speed_1': grid(8, 2),
+      'time_atom_coins_1': grid(3, 2.5),
+      'time_atom_chance_1': grid(1, 3),
+      'unlock_time_atoms': grid(2, 3),
+      'time_atom_value_1': grid(3, 3),
+      'neutron_size_1': grid(5, 3),
+      'neutron_count_2': grid(6, 3),
+      'critical_neutron_chance_1': grid(8, 3),
+      'critical_neutron_effect_1': grid(9, 3),
+      'supernova_atom_coins_1': grid(2, 3.5),
+      'supernova_atom_chance_1': grid(0, 4),
+      'unlock_supernova_atoms': grid(1, 4),
+      'supernova_atom_neutrons_1': grid(2, 4),
+      'special_atom_basics': grid(3, 4),
+      'neutron_count_1': grid(6, 4),
+      'critical_neutron_unlock': grid(8, 4),
+      'atom_spawn_rate_2': grid(10, 4),
+      'ultimate_fission': grid(-1, 4),
+      'black_hole_atom_chance_1': grid(1, 5),
+      'black_hole_pull_radius_1': grid(2, 5),
+      'neutron_basics': grid(6, 5),
+      'atom_basics': grid(8, 5),
+      'atom_spawn_rate_1': grid(9, 5),
+      'black_hole_atom_coins_1': grid(2, 5.5),
+      'unlock_black_hole_atoms': grid(2, 6),
+      'black_hole_spawn_atoms_1': grid(1, 6.5),
+      'root': grid(6, 6),
+      'atom_size_1': grid(8, 6),
+      'atom_neutron_count_1': grid(9, 6),
+      'atom_neutron_count_2': grid(10, 6),
+      'atom_neutron_count_3': grid(11, 6),
+      'base_coin_value_2': grid(1, 7),
+      'base_coin_value_1': grid(2, 7),
+      'economy_basics': grid(3, 7),
+      'chain_basics': grid(8, 7),
+      'atom_lifetime_1': grid(9, 7),
+      'atom_shockwave_unlock': grid(10, 7),
+      'atom_shockwave_force_1': grid(11, 7),
+      'ultimate_atom': grid(12, 7),
+      'starting_coins_1': grid(1, 8),
+      'skill_cost_reduction_1': grid(2, 8),
+      'resource_basics': grid(6, 8),
+      'neutron_reflector': grid(7, 8),
+      'chain_multiplier_1': grid(8, 8),
+      'chain_multiplier_2': grid(9, 8),
+      'chain_multiplier_3': grid(10, 8),
+      'ultimate_economy': grid(-1, 8),
+      'click_shockwave_unlock': grid(5, 9),
+      'max_clicks_1': grid(6, 9),
+      'max_time_1': grid(7, 9),
+      'momentum': grid(9, 9),
+      'click_shockwave_radius_1': grid(5, 10),
+      'max_clicks_2': grid(6, 10),
+      'max_time_2': grid(7, 10),
+      'ultimate_chain': grid(10, 10),
+      'max_clicks_3': grid(6, 11),
+      'max_time_3': grid(7, 11),
+      'max_clicks_4': grid(6, 12),
+      'max_time_4': grid(7, 12),
+      'ultimate_resource': grid(6, 13),
+    };
+
+    // draw grid lines
+    ctx.strokeStyle = '#333';
+    for (let i = 0; i < canvas.width; i += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(canvas.width, i);
+      ctx.stroke();
+    }
+
+    // draw nodes
+    for (const [key, pos] of Object.entries(positions)) {
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = 'cyan';
+      ctx.fill();
+      ctx.font = '12px monospace';
+      ctx.fillStyle = 'white';
+      ctx.fillText(key, pos.x + 10, pos.y - 10);
+    }
+
+    // highlight root
+    if (positions.root) {
+      ctx.beginPath();
+      ctx.arc(positions.root.x, positions.root.y, 12, 0, Math.PI * 2);
+      ctx.strokeStyle = 'yellow';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = 'yellow';
+      ctx.fillText('ROOT', positions.root.x + 15, positions.root.y);
+    }
+  </script>
+</body>
+</html>

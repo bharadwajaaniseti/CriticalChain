@@ -145,7 +145,7 @@
   },
   "critical_neutron_unlock": {
     "id": "critical_neutron_unlock",
-    "name": "Unlock: Critical Neutrons",
+    "name": "Unlock Critical Neutrons",
     "description": "Neutrons have a 5% chance to be Critical.",
     "icon": "",
     "currentLevel": 0,
@@ -277,7 +277,7 @@
   },
   "atom_shockwave_unlock": {
     "id": "atom_shockwave_unlock",
-    "name": "Unlock: Atom Shockwave",
+    "name": "Unlock Atom Shockwave",
     "description": "Broken atoms release a small shockwave, pushing other atoms.",
     "icon": "",
     "currentLevel": 0,
@@ -481,7 +481,7 @@
   },
   "click_shockwave_unlock": {
     "id": "click_shockwave_unlock",
-    "name": "Unlock: Click Shockwave",
+    "name": "Unlock Click Shockwave",
     "description": "Your initial click creates a small explosion.",
     "icon": "",
     "currentLevel": 0,
@@ -577,7 +577,7 @@
   },
   "unlock_time_atoms": {
     "id": "unlock_time_atoms",
-    "name": "Unlock: Time Atoms",
+    "name": "Unlock Time Atoms",
     "description": "Atoms that add +0.5s to the timer can now spawn.",
     "icon": "",
     "currentLevel": 0,
@@ -625,7 +625,7 @@
   },
   "unlock_supernova_atoms": {
     "id": "unlock_supernova_atoms",
-    "name": "Unlock: Supernova Atoms",
+    "name": "Unlock Supernova Atoms",
     "description": "Atoms that release 10 neutrons can now spawn.",
     "icon": "",
     "currentLevel": 0,
@@ -673,7 +673,7 @@
   },
   "unlock_black_hole_atoms": {
     "id": "unlock_black_hole_atoms",
-    "name": "Unlock: Black Hole Atoms",
+    "name": "Unlock Black Hole Atoms",
     "description": "Pulls in nearby neutrons before exploding.",
     "icon": "",
     "currentLevel": 0,

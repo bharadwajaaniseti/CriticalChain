@@ -6,6 +6,8 @@
 import { NavigationManager } from '../systems/NavigationManager';
 import { audioManager, AudioType } from '../systems/AudioManager';
 import { gameState } from '../systems/GameStateManager';
+import { DebugConfig } from '../config/GameConfig';
+import { SkillTreePage } from './SkillTreePage';
 
 export class HomePage {
   private container: HTMLElement;
@@ -68,6 +70,13 @@ export class HomePage {
                 <span class="button-icon">ℹ️</span>
                 <span class="button-text">Credits</span>
               </button>
+              
+              ${DebugConfig.testMode ? `
+              <button class="menu-button dev-button" id="dev-skilltree-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: 2px solid #a78bfa;">
+                <span class="button-icon">🔧</span>
+                <span class="button-text">DEV: Full Skill Tree</span>
+              </button>
+              ` : ''}
             </div>
 
             <div class="home-stats">
@@ -130,6 +139,19 @@ export class HomePage {
         audioManager.playSFX(AudioType.HOME_UI_SELECT);
         this.showCredits();
       });
+    }
+
+    // Only add dev button listener if testMode is enabled
+    if (DebugConfig.testMode) {
+      const devSkillTreeBtn = document.getElementById('dev-skilltree-btn');
+      if (devSkillTreeBtn) {
+        devSkillTreeBtn.addEventListener('click', () => {
+          audioManager.playSFX(AudioType.HOME_UI_SELECT);
+          // Set dev mode flag before navigating
+          SkillTreePage.setDevMode(true);
+          NavigationManager.navigateTo('skilltree');
+        });
+      }
     }
   }
 
