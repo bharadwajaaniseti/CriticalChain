@@ -57,7 +57,7 @@ export const GameConfig = {
     atomHealth: 1.0,
     chainMultiplier: 1.0,
     pierce: 0,
-    homing: 0,
+    homing: 2,
     momentum: 0,
     neutronReflector: 0,
     
