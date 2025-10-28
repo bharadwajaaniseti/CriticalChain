@@ -20,9 +20,9 @@ export const GameConfig = {
    * Game Session Defaults
    */
   GAME_SESSION: {
-    maxClicks: 2,
+    maxClicks: 10,
     maxTime: 10, // seconds
-    startingCoins: 0, // coins at start of each round
+    startingCoins: 100, // coins at start of each round
   },
 
   /**
