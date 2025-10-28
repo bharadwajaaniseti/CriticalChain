@@ -8,7 +8,7 @@ export const GameConfig = {
    * Starting Resources
    */
   STARTING_RESOURCES: {
-    coins: 0,
+    coins: 100,
     quantumCores: 0,
     rank: 0,
     score: 0,
