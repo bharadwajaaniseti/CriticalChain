@@ -41,12 +41,23 @@ export interface FloatingText {
   color: string;
 }
 
+export interface ShockwaveEffect {
+  x: number;
+  y: number;
+  radius: number;
+  maxRadius: number;
+  lifetime: number;
+  maxLifetime: number;
+  color: string;
+}
+
 class ReactionVisualizer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private neutrons: Neutron[] = [];
   private atoms: Atom[] = [];
   private floatingTexts: FloatingText[] = [];
+  private shockwaves: ShockwaveEffect[] = [];
   private animationId: number = 0;
   private lastSpawnTime: number = 0;
   private lastCollisionTime: number = 0; // Track last time a neutron hit an atom (for chain logic)
@@ -55,6 +66,11 @@ class ReactionVisualizer {
   private readonly GRACE_PERIOD = 2000; // 2 second grace period after clicks depleted
   private gameStartTime: number = 0; // Track when game actually started
   private readonly STARTUP_GRACE_PERIOD = 500; // Don't end game in first 500ms
+  
+  // Performance optimization: Cap maximum entities
+  private readonly MAX_NEUTRONS = 150; // Limit neutrons to prevent lag
+  private readonly MAX_ATOMS = 30; // Limit atoms
+  private readonly MAX_FLOATING_TEXTS = 20; // Limit floating text
 
   constructor(canvasElement: HTMLCanvasElement) {
     this.canvas = canvasElement;
@@ -181,6 +197,24 @@ class ReactionVisualizer {
     // 🔥 Player triggered reaction - initialize collision timer
     this.lastCollisionTime = Date.now();
     
+    // 💥 Click Shockwave: Damage atoms in radius if upgrade is unlocked
+    if (state.upgrades.clickShockwave > 0) {
+      const baseRadius = 80;
+      const shockwaveRadius = baseRadius * state.upgrades.clickShockwaveRadius;
+      this.damageAtomsInRadius(x, y, shockwaveRadius);
+      
+      // Create visual shockwave effect
+      this.shockwaves.push({
+        x,
+        y,
+        radius: 0,
+        maxRadius: shockwaveRadius,
+        lifetime: 0,
+        maxLifetime: 30, // 30 frames = 0.5 seconds at 60fps
+        color: '#FF6600',
+      });
+    }
+    
     // Spawn neutrons in random directions
     for (let i = 0; i < neutronCount; i++) {
       const angle = (Math.PI * 2 * i) / neutronCount + Math.random() * 0.5;
@@ -197,7 +231,10 @@ class ReactionVisualizer {
       });
     }
     
-    console.log(`[VISUALIZER] 🚀 Spawned ${neutronCount} neutrons from click at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+    // Performance: Reduce console logging
+    if (state.upgrades.clickShockwave > 0) {
+      // Only log when shockwave is active for debugging
+    }
   }
 
   /**
@@ -227,7 +264,6 @@ class ReactionVisualizer {
     // Track when clicks are depleted
     if (state.clicks <= 0 && this.clicksDepletedTime === 0) {
       this.clicksDepletedTime = now;
-      console.log('[VISUALIZER] Clicks depleted, starting grace period');
     }
     
     // Reset grace period if clicks are refilled
@@ -243,7 +279,6 @@ class ReactionVisualizer {
       const gracePeriodElapsed = this.clicksDepletedTime > 0 && (now - this.clicksDepletedTime >= this.GRACE_PERIOD);
       
       if (gracePeriodElapsed) {
-        console.log('[VISUALIZER] Early end: no clicks, no neutrons, and grace period expired');
         gameState.endGame();
         this.clicksDepletedTime = 0; // Reset for next round
       }
@@ -251,7 +286,9 @@ class ReactionVisualizer {
 
     // Spawn atoms periodically (keep at least 3 atoms on screen)
     const spawnInterval = 2000 / state.upgrades.atomSpawnRate;
-    if ((this.atoms.length < 3 || now - this.lastSpawnTime > spawnInterval) && this.atoms.length < 20) {
+    
+    // Performance: Use MAX_ATOMS cap instead of hardcoded 20
+    if ((this.atoms.length < 3 || now - this.lastSpawnTime > spawnInterval) && this.atoms.length < this.MAX_ATOMS) {
       this.spawnAtom();
       this.lastSpawnTime = now;
     }
@@ -269,6 +306,19 @@ class ReactionVisualizer {
     this.floatingTexts = this.floatingTexts.filter(text => {
       text.lifetime++;
       return text.lifetime < 60; // 1 second at 60fps
+    });
+    
+    // Performance: Limit floating texts
+    if (this.floatingTexts.length > this.MAX_FLOATING_TEXTS) {
+      this.floatingTexts = this.floatingTexts.slice(-this.MAX_FLOATING_TEXTS);
+    }
+
+    // Update shockwave effects
+    this.shockwaves = this.shockwaves.filter(shockwave => {
+      shockwave.lifetime++;
+      const progress = shockwave.lifetime / shockwave.maxLifetime;
+      shockwave.radius = shockwave.maxRadius * progress;
+      return shockwave.lifetime < shockwave.maxLifetime;
     });
 
     // 🔥 CHAIN REACTION LOGIC (Criticality-style)
@@ -472,27 +522,33 @@ class ReactionVisualizer {
   private updateNeutrons(): void {
     const state = gameState.getState();
     
+    // Performance: Pre-filter black holes for gravity calculations
+    const blackHoles = this.atoms.filter(atom => !atom.isFissile);
+    
     this.neutrons = this.neutrons.filter(neutron => {
       // Black hole gravity - apply before normal movement
       let absorbedByBlackHole = false;
-      for (const atom of this.atoms) {
-        if (!atom.isFissile) {
-          // This is a black hole (non-fissile atom)
+      
+      // Performance: Only check gravity if black holes exist
+      if (blackHoles.length > 0) {
+        for (const atom of blackHoles) {
           const dx = atom.x - neutron.x;
           const dy = atom.y - neutron.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
+          const distSq = dx * dx + dy * dy;
           
           // Strong gravity pull - affects neutrons within 200 pixels
-          const gravityRange = 200;
-          if (dist < gravityRange && dist > 0) {
-            // Gravity strength increases as neutron gets closer (inverse square)
-            const gravityStrength = 0.8 * (1 - dist / gravityRange);
+          const gravityRangeSq = 200 * 200;
+          if (distSq < gravityRangeSq && distSq > 0) {
+            // Performance: Avoid sqrt by using squared distance approximation
+            const dist = Math.sqrt(distSq);
+            const gravityStrength = 0.8 * (1 - dist / 200);
             neutron.vx += (dx / dist) * gravityStrength;
             neutron.vy += (dy / dist) * gravityStrength;
           }
           
           // If neutron gets close enough, it's absorbed
-          if (dist < atom.radius + neutron.size) {
+          const absorbRadiusSq = (atom.radius + neutron.size) * (atom.radius + neutron.size);
+          if (distSq < absorbRadiusSq) {
             absorbedByBlackHole = true;
             break;
           }
@@ -509,13 +565,15 @@ class ReactionVisualizer {
       neutron.lifetime++;
 
       // Homing behavior (nerfed - reduced turn rate)
-      if (state.upgrades.homing > 0 && this.atoms.length > 0) {
+      // Performance: Only calculate homing every other frame
+      if (state.upgrades.homing > 0 && this.atoms.length > 0 && neutron.lifetime % 2 === 0) {
         const nearest = this.findNearestAtom(neutron.x, neutron.y);
         if (nearest) {
           const dx = nearest.x - neutron.x;
           const dy = nearest.y - neutron.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > 0) {
+          const distSq = dx * dx + dy * dy;
+          if (distSq > 0) {
+            const dist = Math.sqrt(distSq);
             // Reduced from 0.05 to 0.02 per level (60% weaker)
             const turnRate = 0.02 * state.upgrades.homing;
             neutron.vx += (dx / dist) * turnRate;
@@ -562,15 +620,16 @@ class ReactionVisualizer {
    */
   private findNearestAtom(x: number, y: number): Atom | null {
     let nearest: Atom | null = null;
-    let minDist = Infinity;
+    let minDistSq = Infinity;
 
+    // Performance: Use squared distance to avoid sqrt
     for (const atom of this.atoms) {
       if (!atom.isFissile) continue; // Don't home towards non-fissile
       const dx = atom.x - x;
       const dy = atom.y - y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < minDist) {
-        minDist = dist;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
         nearest = atom;
       }
     }
@@ -606,6 +665,11 @@ class ReactionVisualizer {
    * Check and handle atom-atom collisions with physics
    */
   private checkAtomCollisions(): void {
+    // Performance: Skip atom-atom collisions if too many atoms (optimization)
+    if (this.atoms.length > 15) {
+      return; // Skip physics when too many atoms to prevent lag
+    }
+    
     for (let i = 0; i < this.atoms.length; i++) {
       for (let j = i + 1; j < this.atoms.length; j++) {
         const atom1 = this.atoms[i];
@@ -613,11 +677,13 @@ class ReactionVisualizer {
 
         const dx = atom2.x - atom1.x;
         const dy = atom2.y - atom1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distSq = dx * dx + dy * dy;
         const minDist = atom1.radius + atom2.radius;
+        const minDistSq = minDist * minDist;
 
-        if (distance < minDist) {
+        if (distSq < minDistSq) {
           // Collision detected - apply elastic collision physics
+          const distance = Math.sqrt(distSq);
           
           // Normalize collision vector
           const nx = dx / distance;
@@ -667,7 +733,10 @@ class ReactionVisualizer {
    * Check collisions between neutrons and atoms
    */
   private checkCollisions(): void {
-    for (let i = this.neutrons.length - 1; i >= 0; i--) {
+    // Performance: Limit collision checks if too many neutrons
+    const maxNeutronsToCheck = Math.min(this.neutrons.length, this.MAX_NEUTRONS);
+    
+    for (let i = maxNeutronsToCheck - 1; i >= 0; i--) {
       const neutron = this.neutrons[i];
       
       for (let j = this.atoms.length - 1; j >= 0; j--) {
@@ -675,9 +744,12 @@ class ReactionVisualizer {
         
         const dx = neutron.x - atom.x;
         const dy = neutron.y - atom.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Performance: Use squared distance to avoid sqrt
+        const distSq = dx * dx + dy * dy;
+        const radiusSq = atom.radius * atom.radius;
 
-        if (dist < atom.radius) {
+        if (distSq < radiusSq) {
           // 🔥 COLLISION DETECTED - Update last collision time to keep chain alive
           this.lastCollisionTime = Date.now();
           
@@ -692,10 +764,7 @@ class ReactionVisualizer {
           
           // 🔥 Increment chain ONLY when atom is destroyed (not on every hit)
           if (atom.health <= 0) {
-            const chainBefore = gameState.getState().currentChain;
             gameState.incrementChain();
-            const chainAfter = gameState.getState().currentChain;
-            console.log(`[VISUALIZER] 💥 Atom destroyed! Chain: ${chainBefore} → ${chainAfter}`);
             
             // 🔥 UPDATE COLLISION TIME - This extends the chain window when new neutrons are released
             this.lastCollisionTime = Date.now();
@@ -715,7 +784,6 @@ class ReactionVisualizer {
               gameState.awardCoins(totalCoins);
               
               this.showFloatingText(`+${timeBonus.toFixed(1)}s ⏱ +${totalCoins}💰`, atom.x, atom.y, '#00FFFF');
-              console.log(`[VISUALIZER] Time atom broken! Added ${timeBonus}s and ${totalCoins} coins`);
             } else if (atom.specialType === 'supernova') {
               // Supernova atom - release MANY neutrons
               const state = gameState.getState();
@@ -724,8 +792,11 @@ class ReactionVisualizer {
               const baseSpeed = 1.0 * state.upgrades.neutronSpeed;
               const neutronSize = 5 * state.upgrades.neutronSize;
               
-              for (let k = 0; k < supernovaNeutrons; k++) {
-                const angle = (Math.PI * 2 * k) / supernovaNeutrons + Math.random() * 0.2;
+              // Performance: Cap supernova neutrons to prevent lag
+              const cappedNeutrons = Math.min(supernovaNeutrons, 30);
+              
+              for (let k = 0; k < cappedNeutrons; k++) {
+                const angle = (Math.PI * 2 * k) / cappedNeutrons + Math.random() * 0.2;
                 this.neutrons.push({
                   x: atom.x,
                   y: atom.y,
@@ -743,8 +814,7 @@ class ReactionVisualizer {
               const totalCoins = baseCoinValue + bonusCoins;
               gameState.awardCoins(totalCoins);
               
-              this.showFloatingText(`💥 ${supernovaNeutrons}n +${totalCoins}💰`, atom.x, atom.y, '#FFFF00');
-              console.log(`[VISUALIZER] Supernova atom broken! Released ${supernovaNeutrons} neutrons and ${totalCoins} coins`);
+              this.showFloatingText(`💥 ${cappedNeutrons}n +${totalCoins}💰`, atom.x, atom.y, '#FFFF00');
             } else if (atom.specialType === 'blackhole') {
               // Black hole atom - it already pulls neutrons, just log
               const state = gameState.getState();
@@ -765,7 +835,6 @@ class ReactionVisualizer {
               }
               
               this.showFloatingText(`🌀 +${totalCoins}💰 +${atomsToSpawn}⚛️`, atom.x, atom.y, '#8000FF');
-              console.log(`[VISUALIZER] Black hole atom destroyed! Awarded ${totalCoins} coins and spawning ${atomsToSpawn} atoms`);
             }
             
             // Normal atom destruction
@@ -801,7 +870,6 @@ class ReactionVisualizer {
                     pierceRemaining: currentState.upgrades.pierce,
                   });
                 }
-                console.log(`[VISUALIZER] ⚛️ Atom broken → Released ${neutronCount} neutrons | Chain: x${currentState.currentChain} | Active neutrons: ${this.neutrons.length}`);
               }
             } else {
               // Special atoms - just play sound (coins already awarded above)
@@ -821,6 +889,146 @@ class ReactionVisualizer {
         }
       }
     }
+    
+    // Performance: Trim excess neutrons if we exceed the cap
+    if (this.neutrons.length > this.MAX_NEUTRONS) {
+      this.neutrons = this.neutrons.slice(0, this.MAX_NEUTRONS);
+    }
+  }
+
+  /**
+   * Damage atoms within a radius (for click shockwave)
+   */
+  private damageAtomsInRadius(centerX: number, centerY: number, radius: number): void {
+    const state = gameState.getState();
+    const radiusSq = radius * radius; // Performance: Use squared distance
+    
+    for (let i = this.atoms.length - 1; i >= 0; i--) {
+      const atom = this.atoms[i];
+      
+      // Calculate distance from center
+      const dx = atom.x - centerX;
+      const dy = atom.y - centerY;
+      const distSq = dx * dx + dy * dy;
+      
+      // Check if atom is within shockwave radius (using squared distance)
+      if (distSq <= radiusSq) {
+        // Skip non-fissile atoms (they don't take damage from shockwave)
+        if (!atom.isFissile) {
+          continue;
+        }
+        
+        // Damage the atom (1 damage per shockwave)
+        atom.health--;
+        
+        // Check if atom is destroyed
+        if (atom.health <= 0) {
+          // Increment chain
+          gameState.incrementChain();
+          
+          // Update collision time to extend chain
+          this.lastCollisionTime = Date.now();
+          
+          // SPECIAL ATOM EFFECTS (same as neutron collision)
+          if (atom.specialType === 'time') {
+            const fissionMult = state.upgrades.fissionMastery ? 1.5 : 1;
+            const timeBonus = (0.5 + state.upgrades.timeAtomBonus) * fissionMult;
+            gameState.updateTime(-timeBonus);
+            
+            const baseCoinValue = atom.value * 2;
+            const bonusCoins = state.upgrades.timeAtomCoins;
+            const totalCoins = baseCoinValue + bonusCoins;
+            gameState.awardCoins(totalCoins);
+            
+            this.showFloatingText(`+${timeBonus.toFixed(1)}s ⏱ +${totalCoins}💰`, atom.x, atom.y, '#00FFFF');
+          } else if (atom.specialType === 'supernova') {
+            const fissionMult = state.upgrades.fissionMastery ? 1.5 : 1;
+            const supernovaNeutrons = Math.floor((10 + state.upgrades.supernovaNeutrons) * fissionMult);
+            const baseSpeed = 1.0 * state.upgrades.neutronSpeed;
+            const neutronSize = 5 * state.upgrades.neutronSize;
+            
+            // Performance: Cap supernova neutrons
+            const cappedNeutrons = Math.min(supernovaNeutrons, 30);
+            
+            for (let k = 0; k < cappedNeutrons; k++) {
+              const angle = (Math.PI * 2 * k) / cappedNeutrons + Math.random() * 0.2;
+              this.neutrons.push({
+                x: atom.x,
+                y: atom.y,
+                vx: Math.cos(angle) * baseSpeed * 1.5,
+                vy: Math.sin(angle) * baseSpeed * 1.5,
+                size: neutronSize,
+                lifetime: 0,
+                pierceRemaining: state.upgrades.pierce,
+              });
+            }
+            
+            const baseCoinValue = atom.value * 2;
+            const bonusCoins = state.upgrades.supernovaCoins;
+            const totalCoins = baseCoinValue + bonusCoins;
+            gameState.awardCoins(totalCoins);
+            
+            this.showFloatingText(`💥 ${cappedNeutrons}n +${totalCoins}💰`, atom.x, atom.y, '#FFFF00');
+          } else if (atom.specialType === 'blackhole') {
+            const baseCoinValue = atom.value * 2;
+            const bonusCoins = state.upgrades.blackHoleCoins;
+            const totalCoins = baseCoinValue + bonusCoins;
+            gameState.awardCoins(totalCoins);
+            
+            const atomsToSpawn = state.upgrades.blackHoleSpawnAtoms;
+            if (atomsToSpawn > 0) {
+              for (let k = 0; k < atomsToSpawn; k++) {
+                setTimeout(() => this.spawnAtomNearPoint(atom.x, atom.y), k * 150);
+              }
+            }
+            
+            this.showFloatingText(`🌀 +${totalCoins}💰 +${atomsToSpawn}⚛️`, atom.x, atom.y, '#8000FF');
+          }
+          
+          // Normal atom destruction
+          if (!atom.specialType) {
+            const currentChain = gameState.getState().currentChain;
+            gameState.awardCoins(atom.value);
+            
+            const chainText = currentChain > 1 ? `⚡ +${atom.value} ×${currentChain} ⚡` : `+${atom.value} ×${currentChain}`;
+            this.showFloatingText(chainText, atom.x, atom.y, '#00FF66');
+            
+            audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+            
+            // Emit neutrons to continue chain reaction
+            const neutronCount = state.upgrades.neutronCountAtom;
+            const baseSpeed = 1.0 * state.upgrades.neutronSpeed;
+            const neutronSize = 5 * state.upgrades.neutronSize;
+            
+            if (neutronCount > 0) {
+              for (let k = 0; k < neutronCount; k++) {
+                const angle = (Math.PI * 2 * k) / neutronCount + Math.random() * 0.3;
+                
+                this.neutrons.push({
+                  x: atom.x,
+                  y: atom.y,
+                  vx: Math.cos(angle) * baseSpeed,
+                  vy: Math.sin(angle) * baseSpeed,
+                  size: neutronSize,
+                  lifetime: 0,
+                  pierceRemaining: state.upgrades.pierce,
+                });
+              }
+            }
+          } else {
+            audioManager.playSFX(AudioType.SFX_ATOM_BREAK);
+          }
+          
+          // Remove destroyed atom
+          this.atoms.splice(i, 1);
+        }
+      }
+    }
+    
+    // Performance: Trim excess neutrons if we exceed the cap
+    if (this.neutrons.length > this.MAX_NEUTRONS) {
+      this.neutrons = this.neutrons.slice(0, this.MAX_NEUTRONS);
+    }
   }
 
   /**
@@ -836,6 +1044,11 @@ class ReactionVisualizer {
     // Draw atoms
     for (const atom of this.atoms) {
       this.drawAtom(atom);
+    }
+
+    // Draw shockwave effects (before neutrons so they appear behind)
+    for (const shockwave of this.shockwaves) {
+      this.drawShockwave(shockwave);
     }
 
     // Draw neutrons (triangles)
@@ -1160,6 +1373,11 @@ class ReactionVisualizer {
    * Show floating text
    */
   private showFloatingText(text: string, x: number, y: number, color: string): void {
+    // Performance: Don't add more floating texts if we're at the limit
+    if (this.floatingTexts.length >= this.MAX_FLOATING_TEXTS) {
+      return;
+    }
+    
     this.floatingTexts.push({
       x,
       y,
@@ -1167,6 +1385,38 @@ class ReactionVisualizer {
       lifetime: 0,
       color,
     });
+  }
+
+  /**
+   * Draw shockwave effect
+   */
+  private drawShockwave(shockwave: ShockwaveEffect): void {
+    const ctx = this.ctx;
+    const progress = shockwave.lifetime / shockwave.maxLifetime;
+    const alpha = 1 - progress; // Fade out as it expands
+    
+    // Draw expanding ring
+    ctx.strokeStyle = `rgba(255, 102, 0, ${alpha * 0.8})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(shockwave.x, shockwave.y, shockwave.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw inner glow ring (slightly smaller)
+    if (shockwave.radius > 10) {
+      ctx.strokeStyle = `rgba(255, 200, 0, ${alpha * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(shockwave.x, shockwave.y, shockwave.radius - 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    
+    // Draw outer glow ring (slightly larger)
+    ctx.strokeStyle = `rgba(255, 50, 0, ${alpha * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(shockwave.x, shockwave.y, shockwave.radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   /**
@@ -1300,6 +1550,7 @@ class ReactionVisualizer {
     this.neutrons = [];
     this.atoms = [];
     this.floatingTexts = [];
+    this.shockwaves = [];
     this.lastCollisionTime = Date.now(); // Reset collision timer for new game
     this.gameStartTime = Date.now(); // Reset startup grace period for new game
     this.clicksDepletedTime = 0; // Reset clicks depleted timer

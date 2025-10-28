@@ -9,7 +9,7 @@ export const GameConfig = {
    */
   STARTING_RESOURCES: {
     coins: 0,
-    quantumCores: 60,
+    quantumCores: 0,
     rank: 0,
     score: 0,
     totalAtomsDestroyed: 0,
@@ -20,9 +20,9 @@ export const GameConfig = {
    * Game Session Defaults
    */
   GAME_SESSION: {
-    maxClicks: 25,
+    maxClicks: 2,
     maxTime: 10, // seconds
-    startingCoins: 1000, // coins at start of each round
+    startingCoins: 0, // coins at start of each round
   },
 
   /**
@@ -50,14 +50,14 @@ export const GameConfig = {
     neutronSpeed: 1.0,
     neutronLifetime: 1.0,
     neutronSize: 1.0,
-    atomSpawnRate: 100.0,
-    atomSpeed: 100.0,
-    atomSize: 50.0,
-    atomLifetime: 2.0,
+    atomSpawnRate: 1.0,
+    atomSpeed: 1.0,
+    atomSize: 1.0,
+    atomLifetime: 1.0,
     atomHealth: 1.0,
     chainMultiplier: 1.0,
     pierce: 0,
-    homing: 2,
+    homing: 1,
     momentum: 0,
     neutronReflector: 0,
     
@@ -175,11 +175,11 @@ export const GameConfig = {
    * Development & Debug
    */
   DEBUG: {
-    enableLogging: true,
+    enableLogging: false,
     showFPS: false,
     godMode: false, // Infinite resources
     skipTutorial: false,
-    testMode: true, // Show debug controls for testing special atoms
+    testMode: false, // Show debug controls for testing special atoms
   },
 
   /**
