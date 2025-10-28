@@ -133,9 +133,11 @@ class GameStateManager {
 
   private initializeState(): GameState {
     // Check if we should force reset due to config changes
-    if (this.shouldForceConfigReset()) {
-      console.log('[GameState] Config override detected - clearing save data');
+    const resetNeeded = this.shouldForceConfigReset();
+    if (resetNeeded) {
+      console.log('[GameState] ⚠️ CONFIG CHANGED - CLEARING SAVE DATA');
       localStorage.removeItem('CriticalChain_Save');
+      console.log('[GameState] Save data cleared. New config will be applied.');
     }
 
     const saved = this.loadGame();
@@ -814,12 +816,23 @@ class GameStateManager {
   }
 
   /**
+   * Force reload config - clears save and config version to apply fresh config
+   */
+  forceReloadConfig(): void {
+    console.log('[GameState] 🔄 Force reloading config...');
+    localStorage.removeItem('CriticalChain_Save');
+    localStorage.removeItem('CriticalChain_ConfigVersion');
+    window.location.reload();
+  }
+
+  /**
    * Reset game - completely wipe all progress
    */
   reset(): void {
     // Clear localStorage first
     localStorage.removeItem('CriticalChain_Save');
-    
+    localStorage.removeItem('CriticalChain_ConfigVersion');
+
     // Reset to fresh state
     this.state = {
       coins: 0,

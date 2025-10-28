@@ -76,6 +76,10 @@ export class HomePage {
                 <span class="button-icon">🔧</span>
                 <span class="button-text">DEV: Full Skill Tree</span>
               </button>
+              <button class="menu-button dev-button" id="reload-config-btn" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: 2px solid #fca5a5;">
+                <span class="button-icon">🔄</span>
+                <span class="button-text">Reload Config (Clear Save)</span>
+              </button>
               ` : ''}
             </div>
 
@@ -141,7 +145,7 @@ export class HomePage {
       });
     }
 
-    // Only add dev button listener if testMode is enabled
+    // Only add dev button listeners if testMode is enabled
     if (DebugConfig.testMode) {
       const devSkillTreeBtn = document.getElementById('dev-skilltree-btn');
       if (devSkillTreeBtn) {
@@ -150,6 +154,16 @@ export class HomePage {
           // Set dev mode flag before navigating
           SkillTreePage.setDevMode(true);
           NavigationManager.navigateTo('skilltree');
+        });
+      }
+
+      const reloadConfigBtn = document.getElementById('reload-config-btn');
+      if (reloadConfigBtn) {
+        reloadConfigBtn.addEventListener('click', () => {
+          audioManager.playSFX(AudioType.HOME_UI_SELECT);
+          if (confirm('⚠️ This will clear your save data and reload the game with fresh GameConfig values.\n\nContinue?')) {
+            gameState.forceReloadConfig();
+          }
         });
       }
     }
