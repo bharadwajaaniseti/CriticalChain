@@ -47,7 +47,7 @@ export const GameConfig = {
   UPGRADES: {
     neutronCountPlayer: 2,
     neutronCountAtom: 2,
-    neutronSpeed: 1.0,
+    neutronSpeed: 100.0,
     neutronLifetime: 1.0,
     neutronSize: 1.0,
     atomSpawnRate: 1.0,
