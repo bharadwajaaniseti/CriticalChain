@@ -3,7 +3,7 @@
  * Manages core game state for Critical Chain (Criticality clone)
  */
 
-import { StartingResources, GameSession, DefaultUpgrades } from '../config/GameConfig';
+import { StartingResources, GameSession, DefaultUpgrades, GameConfig } from '../config/GameConfig';
 
 export interface Upgrade {
   id: string;
@@ -132,6 +132,12 @@ class GameStateManager {
   }
 
   private initializeState(): GameState {
+    // Check if we should force reset due to config changes
+    if (this.shouldForceConfigReset()) {
+      console.log('[GameState] Config override detected - clearing save data');
+      localStorage.removeItem('CriticalChain_Save');
+    }
+
     const saved = this.loadGame();
     if (saved) {
       // Ensure upgrades exist and have all properties
@@ -579,6 +585,30 @@ class GameStateManager {
       }
     }
     return null;
+  }
+
+  /**
+   * Check if config has changed in a way that requires clearing saved data
+   * Store a config version in localStorage and compare it
+   */
+  private shouldForceConfigReset(): boolean {
+    const configVersion = JSON.stringify({
+      startingCoins: StartingResources.coins,
+      startingQuantumCores: StartingResources.quantumCores,
+      maxClicks: GameSession.maxClicks,
+      maxTime: GameSession.maxTime,
+      godMode: GameConfig.DEBUG.godMode,
+    });
+
+    const savedVersion = localStorage.getItem('CriticalChain_ConfigVersion');
+
+    if (savedVersion !== configVersion) {
+      localStorage.setItem('CriticalChain_ConfigVersion', configVersion);
+      // Only force reset if there was a previous version (not first load)
+      return savedVersion !== null;
+    }
+
+    return false;
   }
 
   /**
