@@ -320,6 +320,12 @@ class GameStateManager {
     this.state.maxChain = 0;
     // Reset coins earned this round
     this.state.coinsThisRound = 0;
+
+    // Apply session starting coins if configured
+    if (GameSession.startingCoins > 0) {
+      this.state.coins += GameSession.startingCoins;
+      console.log(`[GameState] Session starting coins applied: +${GameSession.startingCoins} (total: ${this.state.coins})`);
+    }
   }
 
   /**
@@ -593,11 +599,21 @@ class GameStateManager {
    */
   private shouldForceConfigReset(): boolean {
     const configVersion = JSON.stringify({
+      // Starting resources
       startingCoins: StartingResources.coins,
       startingQuantumCores: StartingResources.quantumCores,
+
+      // Game session
       maxClicks: GameSession.maxClicks,
       maxTime: GameSession.maxTime,
+      sessionStartingCoins: GameSession.startingCoins,
+
+      // Default upgrades (for testing)
+      upgrades: DefaultUpgrades,
+
+      // Debug flags
       godMode: GameConfig.DEBUG.godMode,
+      testMode: GameConfig.DEBUG.testMode,
     });
 
     const savedVersion = localStorage.getItem('CriticalChain_ConfigVersion');
