@@ -179,7 +179,7 @@ export const GameConfig = {
     showFPS: false,
     godMode: false, // Infinite resources
     skipTutorial: false,
-    testMode: true, // Show debug controls for testing special atoms
+    testMode: false, // Show debug controls for testing special atoms
   },
 
   /**
